@@ -1,0 +1,46 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build APK & IPA
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 1. Build Android APK (Release)
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      # 2. Build iOS (No CodeSign)
+      # iOS 真正签名需要配置复杂的 Certificate & Provisioning Profile Secrets。
+      # 这里演示构建未签名的 .app 并打包为 .ipa (Payload)，仅供测试或自行重签名。
+      - name: Build iOS (No CodeSign)
+        run: |
+          flutter build ios --release --no-codesign
+          mkdir Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -r release-ios.ipa Payload/
+
+      # 3. Create Release & Upload Assets
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            release-ios.ipa
+          draft: true
+          prerelease: false
+          generate_release_notes: true
