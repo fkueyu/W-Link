@@ -85,3 +85,17 @@ lib/
 ## 📄 许可证 (License)
 
 本项目基于 MIT License 开源。
+
+## ☕ 请我喝杯咖啡 (Support)
+
+如果这个项目对你有帮助，欢迎请作者喝杯咖啡！
+
+<p align="center">
+  <img src="assets/donate/wechat.jpg" width="180" alt="微信赞赏码" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/donate/alipay.jpg" width="180" alt="支付宝收款码" />
+</p>
+
+<p align="center">
+  <sub>微信赞赏码 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 支付宝收款码</sub>
+</p>
