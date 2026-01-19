@@ -284,12 +284,13 @@ class DiscoveredDeviceCard extends ConsumerWidget {
               ).disabledColor.withValues(alpha: 0.1),
             )
           else
-            FilledButton.tonal(
+            FilledButton(
               onPressed: onAdd,
               style: FilledButton.styleFrom(
-                backgroundColor: FluxTheme.primaryColor.withValues(alpha: 0.2),
+                backgroundColor: FluxTheme.primaryColor,
+                foregroundColor: Colors.white,
               ),
-              child: Text(l10n.addDevice),
+              child: Text(l10n.add),
             ),
         ],
       ),

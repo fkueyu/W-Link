@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:multicast_dns/multicast_dns.dart';
 import '../models/wled_device.dart';
 
 /// mDNS 设备发现服务
@@ -9,54 +10,140 @@ import '../models/wled_device.dart';
 class MdnsDiscoveryService {
   static const _channel = MethodChannel('flux/mdns_discovery');
 
-  bool _isRunning = false;
+  StreamController<WledDevice>? _currentScanController;
+  bool _isScanning = false;
+  MDnsClient? _dartMdnsClient;
 
   /// 扫描局域网中的 WLED 设备
   Stream<WledDevice> scanDevices({
-    Duration duration = const Duration(seconds: 8),
-  }) async* {
-    if (_isRunning) {
-      debugPrint('[DiscoveryService] Already running, skipping scan');
-      return;
-    }
-    _isRunning = true;
+    Duration duration = const Duration(seconds: 10),
+  }) {
+    // 停止之前的扫描
+    stopScan();
 
-    try {
-      // 当前仅支持 iOS/macOS 原生 Discovery
-      // Android 如需支持，后续可通过 MethodChannel 或 nsd 包实现
-      if (Platform.isIOS || Platform.isMacOS) {
-        yield* _scanUsingNativeBonjour();
-      }
-    } finally {
-      _isRunning = false;
-    }
+    final controller = StreamController<WledDevice>();
+    _currentScanController = controller;
+
+    _startScan(duration);
+
+    // 当监听者取消订阅时（例如页面退出），停止扫描
+    controller.onCancel = () {
+      stopScan();
+    };
+
+    return controller.stream;
   }
 
-  /// iOS/macOS: 使用原生 Bonjour 发现
-  Stream<WledDevice> _scanUsingNativeBonjour() async* {
-    debugPrint('[DiscoveryService] Using native Bonjour discovery');
+  Future<void> _startScan(Duration duration) async {
+    if (_isScanning) return;
+    _isScanning = true;
+
+    // 1. 设置 MethodChannel 回调 (iOS/macOS)
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onDeviceFound') {
+        _handleDeviceFound(call.arguments);
+      }
+    });
 
     try {
-      final result = await _channel.invokeMethod('startDiscovery');
+      // 2. 启动原生 mDNS 扫描
+      if (Platform.isIOS || Platform.isMacOS) {
+        debugPrint('[Discovery] Starting Native Bonjour Scan');
+        await _channel.invokeMethod('startDiscovery');
+      } else {
+        // Android / Other: Use Dart multicast_dns
+        _scanUsingDartMdns();
+      }
+    } catch (e) {
+      debugPrint('[Discovery] Error starting scan: $e');
+      stopScan();
+    }
 
-      if (result is List) {
-        for (final item in result) {
-          if (item is Map) {
-            final name = item['name'] as String? ?? 'WLED Device';
-            final ip = item['ip'] as String?;
-            final port = item['port'] as int? ?? 80;
+    // 3. 设置超时
+    Future.delayed(duration, () {
+      if (_isScanning) {
+        debugPrint('[Discovery] Scan completed (timeout)');
+        stopScan();
+      }
+    });
+  }
 
-            if (ip != null && ip.isNotEmpty) {
-              debugPrint(
-                '[DiscoveryService] Found via Bonjour: $name @ $ip:$port',
-              );
-              yield WledDevice.fromMdns(name: name, ip: ip, port: port);
-            }
+  Future<void> _scanUsingDartMdns() async {
+    debugPrint('[Discovery] Starting Dart mDNS Scan');
+    _dartMdnsClient = MDnsClient();
+    try {
+      await _dartMdnsClient!.start();
+
+      // 查找 _wled._tcp
+      final query = ResourceRecordQuery.serverPointer('_wled._tcp.local');
+
+      await for (final PtrResourceRecord ptr
+          in _dartMdnsClient!.lookup<PtrResourceRecord>(query)) {
+        if (!_isScanning) break;
+
+        await for (final SrvResourceRecord srv
+            in _dartMdnsClient!.lookup<SrvResourceRecord>(
+              ResourceRecordQuery.service(ptr.domainName),
+            )) {
+          await for (final IPAddressResourceRecord ip
+              in _dartMdnsClient!.lookup<IPAddressResourceRecord>(
+                ResourceRecordQuery.addressIPv4(srv.target),
+              )) {
+            // 简单的名字处理: "WLED-123456._wled._tcp.local" -> "WLED-123456"
+            final rawName = ptr.domainName.split('.').first;
+            // 移除前面的Instance名可能包含的转义字符等（暂且简单处理）
+
+            _handleDeviceFound({
+              'name': rawName,
+              'ip': ip.address.address,
+              'port': srv.port,
+            });
           }
         }
       }
-    } on PlatformException catch (e) {
-      debugPrint('[DiscoveryService] Bonjour error: ${e.message}');
+    } catch (e) {
+      debugPrint('[Discovery] Dart mDNS Error: $e');
+    }
+  }
+
+  void _handleDeviceFound(dynamic arguments) {
+    if (_currentScanController == null || _currentScanController!.isClosed)
+      return;
+
+    if (arguments is Map) {
+      final name = arguments['name'] as String? ?? 'WLED Device';
+      final ip = arguments['ip'] as String?;
+      final port = arguments['port'] as int? ?? 80;
+
+      if (ip != null && ip.isNotEmpty) {
+        debugPrint('[Discovery] Found: $name @ $ip');
+        _currentScanController?.add(
+          WledDevice.fromMdns(name: name, ip: ip, port: port),
+        );
+      }
+    }
+  }
+
+  void stopScan() {
+    _isScanning = false;
+
+    if (_currentScanController != null) {
+      if (!_currentScanController!.isClosed) {
+        _currentScanController!.close();
+      }
+      _currentScanController = null;
+    }
+
+    if (Platform.isIOS || Platform.isMacOS) {
+      try {
+        _channel.invokeMethod('stopDiscovery');
+        _channel.setMethodCallHandler(null);
+      } catch (_) {}
+    }
+
+    if (_dartMdnsClient != null) {
+      _dartMdnsClient!.stop();
+      _dartMdnsClient = null;
     }
   }
 
@@ -80,9 +167,6 @@ class MdnsDiscoveryService {
   }
 
   void dispose() {
-    _isRunning = false;
-    if (Platform.isIOS || Platform.isMacOS) {
-      _channel.invokeMethod('stopDiscovery');
-    }
+    stopScan();
   }
 }

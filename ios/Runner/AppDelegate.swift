@@ -15,23 +15,23 @@ import UIKit
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
     
-    guard let controller = window?.rootViewController as? FlutterViewController else {
-      return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-    }
-    discoveryChannel = FlutterMethodChannel(
-      name: "flux/mdns_discovery",
-      binaryMessenger: controller.binaryMessenger
-    )
-    
-    discoveryChannel?.setMethodCallHandler { [weak self] call, result in
-      switch call.method {
-      case "startDiscovery":
-        self?.startDiscovery(result: result)
-      case "stopDiscovery":
-        self?.stopDiscovery()
-        result(nil)
-      default:
-        result(FlutterMethodNotImplemented)
+    // 使用 registrar API 获取 messenger，避免 rootViewController 访问警告
+    if let registrar = self.registrar(forPlugin: "flux/mdns_discovery") {
+      discoveryChannel = FlutterMethodChannel(
+        name: "flux/mdns_discovery",
+        binaryMessenger: registrar.messenger()
+      )
+      
+      discoveryChannel?.setMethodCallHandler { [weak self] call, result in
+        switch call.method {
+        case "startDiscovery":
+          self?.startDiscovery(result: result)
+        case "stopDiscovery":
+          self?.stopDiscovery()
+          result(nil)
+        default:
+          result(FlutterMethodNotImplemented)
+        }
       }
     }
     
@@ -42,18 +42,12 @@ import UIKit
     // 清理之前的状态
     stopDiscovery()
     
-    discoveredServices = []
-    resolvedDevices = []
-    pendingResult = result
-    
     bonjourBrowser = NetServiceBrowser()
     bonjourBrowser?.delegate = self
     bonjourBrowser?.searchForServices(ofType: "_wled._tcp.", inDomain: "local.")
     
-    // 8 秒后返回结果
-    DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
-      self?.finishDiscovery()
-    }
+    // 立即返回成功，真正的结果通过 onDeviceFound 异步发送
+    result(true)
   }
   
   private func stopDiscovery() {
@@ -64,13 +58,6 @@ import UIKit
     }
     discoveredServices = []
   }
-  
-  private func finishDiscovery() {
-    guard let result = pendingResult else { return }
-    pendingResult = nil
-    stopDiscovery()
-    result(resolvedDevices)
-  }
 }
 
 // MARK: - NetServiceBrowserDelegate
@@ -79,6 +66,7 @@ extension AppDelegate: NetServiceBrowserDelegate {
     print("[Bonjour] Found service: \(service.name)")
     discoveredServices.append(service)
     service.delegate = self
+    // 立即开始解析地址
     service.resolve(withTimeout: 5.0)
   }
   
@@ -118,10 +106,11 @@ extension AppDelegate: NetServiceDelegate {
           "port": sender.port
         ]
         
-        // 避免重复
-        if !resolvedDevices.contains(where: { $0["ip"] as? String == ipAddress }) {
-          print("[Bonjour] Resolved: \(sender.name) -> \(ipAddress):\(sender.port)")
-          resolvedDevices.append(device)
+        print("[Bonjour] Resolved: \(sender.name) -> \(ipAddress):\(sender.port)")
+        
+        // 实时发送给 Flutter
+        DispatchQueue.main.async { [weak self] in
+          self?.discoveryChannel?.invokeMethod("onDeviceFound", arguments: device)
         }
         break
       }

@@ -173,7 +173,7 @@ abstract class AppStrings {
 /// 中文实现
 class ZhStrings implements AppStrings {
   @override
-  String get appTitle => 'Flux';
+  String get appTitle => '幻彩';
   @override
   String get myDevices => '我的设备';
   @override
@@ -493,7 +493,7 @@ class ZhStrings implements AppStrings {
 /// 英文实现
 class EnStrings implements AppStrings {
   @override
-  String get appTitle => 'Flux';
+  String get appTitle => 'W-Link';
   @override
   String get myDevices => 'My Devices';
   @override

@@ -29,7 +29,7 @@ class FluxApp extends ConsumerWidget {
     final settingsNotifier = ref.read(settingsProvider.notifier);
 
     return MaterialApp(
-      title: 'Flux',
+      title: 'W-Link',
       debugShowCheckedModeBanner: false,
       theme: FluxTheme.lightTheme,
       darkTheme: FluxTheme.darkTheme,

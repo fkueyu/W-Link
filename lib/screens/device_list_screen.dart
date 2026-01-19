@@ -52,16 +52,14 @@ class DeviceListScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              gradient: FluxTheme.primaryGradient,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.bolt,
-                              color: Colors.white,
-                              size: 24,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? 'assets/icons/icon_dark.png'
+                                  : 'assets/icons/icon_light.png',
+                              width: 48,
+                              height: 48,
                             ),
                           ).animate().scale(
                             duration: 400.ms,
