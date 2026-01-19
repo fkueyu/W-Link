@@ -1,5 +1,7 @@
 # W-Link (幻彩) - Modern WLED Controller
 
+**🇨🇳 中文 | [🇺🇸 English](README_EN.md)**
+
 W-Link（幻彩）是一个现代化、极简设计的 WLED 设备控制应用，基于 Flutter 构建。它旨在提供流畅、直观的用户体验，让 WLED 灯带的管理变得简单而优雅。（注：该项目由 AI 完成，仅供学习参考）
 
 ## ✨ 特性 (Features)
