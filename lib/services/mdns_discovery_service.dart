@@ -107,8 +107,9 @@ class MdnsDiscoveryService {
   }
 
   void _handleDeviceFound(dynamic arguments) {
-    if (_currentScanController == null || _currentScanController!.isClosed)
+    if (_currentScanController == null || _currentScanController!.isClosed) {
       return;
+    }
 
     if (arguments is Map) {
       final name = arguments['name'] as String? ?? 'WLED Device';
