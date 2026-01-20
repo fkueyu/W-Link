@@ -1,6 +1,21 @@
 flutter_launcher_icons:
-  android: "launcher_icon"
-  ios: true
   image_path: "assets/icons/icon_light.png"
-  # image_path: "assets/icons/icon_dark.png" # Uncomment to use dark icon
-  remove_alpha_ios: true
+  
+  ios: true
+  image_path_ios: "assets/icons/icon_light.png"
+  # iOS 18 暗色模式图标 (需要透明背景)
+  image_path_ios_dark_transparent: "assets/icons/icon_dark.png"
+  remove_alpha_ios: false
+  
+  android: true
+  image_path_android: "assets/icons/icon_light.png"
+  # Android 自适应图标 (Android 8.0+)
+  adaptive_icon_background: "#E8D5F5"
+  adaptive_icon_foreground: "assets/icons/icon_light.png"
+  # Android 13+ 暗色模式
+  adaptive_icon_background_dark: "#1A1A2E"
+  adaptive_icon_foreground_dark: "assets/icons/icon_dark.png"
+  
+  windows:
+    generate: true
+    image_path: "assets/icons/icon_light.png"

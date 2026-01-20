@@ -104,6 +104,15 @@ class DeviceCard extends ConsumerWidget {
     // 如果没有连接成功，回退到 device.isOnline 状态
     final isOnline = state != null || device.isOnline;
 
+    // 提取设备颜色
+    Color displayColor = FluxTheme.online;
+    if (state != null && state.primaryColor != null) {
+      final rgb = state.primaryColor!;
+      if (rgb.length >= 3) {
+        displayColor = Color.fromARGB(255, rgb[0], rgb[1], rgb[2]);
+      }
+    }
+
     return GlassCard(
       onTap: onTap,
       onLongPress: () => _showOptions(context, ref, l10n),
@@ -117,7 +126,7 @@ class DeviceCard extends ConsumerWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: isOn
-                      ? FluxTheme.online.withValues(alpha: 0.2)
+                      ? displayColor.withValues(alpha: 0.2)
                       : FluxTheme.offline.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -125,7 +134,7 @@ class DeviceCard extends ConsumerWidget {
                   tag: 'icon_${device.id}',
                   child: Icon(
                     isOn ? Icons.lightbulb : Icons.lightbulb_outline,
-                    color: isOn ? FluxTheme.online : FluxTheme.offline,
+                    color: isOn ? displayColor : FluxTheme.offline,
                   ),
                 ),
               ),
@@ -179,7 +188,8 @@ class DeviceCard extends ConsumerWidget {
                 trackHeight: 6,
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
-                activeTrackColor: isOn ? FluxTheme.online : null,
+                activeTrackColor: isOn ? displayColor : null,
+                thumbColor: isOn ? displayColor : null,
               ),
               child: Slider(
                 value: bri,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/core.dart';
 import '../providers/providers.dart';
 import '../widgets/widgets.dart';
@@ -121,29 +122,21 @@ class SettingsScreen extends ConsumerWidget {
                             leading: const Icon(Icons.code),
                             title: Text(l10n.projectUrl),
                             trailing: const Icon(Icons.open_in_new, size: 16),
-                            onTap: () {
-                              // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('即将跳转 GitHub')));
+                            onTap: () async {
+                              final url = Uri.parse(
+                                'https://github.com/fkueyu/W-Link',
+                              );
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
                             },
                           ),
                         ],
                       ),
                     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-
-                    const SizedBox(height: 24),
-                    _buildSectionTitle(context, l10n.experimental),
-                    GlassCard(
-                      child: Column(
-                        children: [
-                          SwitchListTile(
-                            secondary: const Icon(Icons.bug_report_outlined),
-                            title: Text(l10n.testMode),
-                            subtitle: Text(l10n.testModeSubtitle),
-                            value: false,
-                            onChanged: (val) {},
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
 
                     const SizedBox(height: 32),
                     TextButton(
