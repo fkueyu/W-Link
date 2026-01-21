@@ -143,6 +143,10 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   // 操作后保护时间（秒）：在此时间内忽略所有外部状态更新
   static const _protectionSeconds = 5;
 
+  int _failureCount = 0;
+  // 连续失败阈值：允许 2 次失败 (10秒)，第 3 次失败才报错
+  static const _maxFailures = 2;
+
   DeviceStateNotifier(this._api) : super(const AsyncValue.loading()) {
     if (_api != null) {
       _startPolling();
@@ -179,14 +183,29 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
 
       if (mounted) {
         state = AsyncValue.data(newState);
+        _failureCount = 0; // 重置失败计数
       }
     } catch (e, st) {
       // 保护期内不报错，避免干扰 UI
-      if (mounted &&
-          DateTime.now().difference(_lastUserActionTime).inSeconds >=
-              _protectionSeconds) {
-        state = AsyncValue.error(e, st);
+      if (DateTime.now().difference(_lastUserActionTime).inSeconds <
+          _protectionSeconds) {
+        return;
       }
+
+      if (!mounted) return;
+
+      _failureCount++;
+
+      // 如果已有数据，且失败次数未超过阈值，则忽略此次错误（防抖）
+      if (state.hasValue && _failureCount <= _maxFailures) {
+        // 可以选择 log warning
+        debugPrint(
+          'Poll failed ($_failureCount/$_maxFailures), keeping old state. Error: $e',
+        );
+        return;
+      }
+
+      state = AsyncValue.error(e, st);
     }
   }
 

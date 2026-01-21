@@ -40,8 +40,19 @@ class WledApiService {
   /// 获取效果列表
   Future<List<String>> getEffects() async {
     final response = await _get('/json/eff');
-    final list = jsonDecode(response.body) as List;
-    return list.cast<String>();
+    final decoded = jsonDecode(response.body);
+    if (decoded is List) {
+      return decoded.cast<String>();
+    } else if (decoded is Map<String, dynamic> &&
+        decoded.containsKey('effects')) {
+      // Fallback for some versions returning object with effects key
+      return (decoded['effects'] as List).cast<String>();
+    } else if (decoded is Map) {
+      // Should not happen for standard WLED /json/eff, logging to debug
+      print('Unexpected effects response format: $decoded');
+      return [];
+    }
+    return [];
   }
 
   /// 获取效果元数据 (WLED 0.14+)

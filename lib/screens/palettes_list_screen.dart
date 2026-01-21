@@ -98,7 +98,7 @@ class _PalettesListScreenState extends ConsumerState<PalettesListScreen> {
               Expanded(
                 child: palettesAsync.when(
                   loading: () => const SkeletonListView(itemHeight: 70),
-                  error: (e, _) => Center(
+                  error: (e, s) => Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -111,6 +111,25 @@ class _PalettesListScreenState extends ConsumerState<PalettesListScreen> {
                         Text(
                           l10n.loadFailed,
                           style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            '$e',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () => ref.invalidate(palettesProvider),
+                          icon: const Icon(Icons.refresh),
+                          label: Text(ref.watch(l10nProvider).retry),
                         ),
                       ],
                     ),
