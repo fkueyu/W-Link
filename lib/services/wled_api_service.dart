@@ -48,8 +48,7 @@ class WledApiService {
       // Fallback for some versions returning object with effects key
       return (decoded['effects'] as List).cast<String>();
     } else if (decoded is Map) {
-      // Should not happen for standard WLED /json/eff, logging to debug
-      print('Unexpected effects response format: $decoded');
+      // Should not happen for standard WLED /json/eff
       return [];
     }
     return [];
