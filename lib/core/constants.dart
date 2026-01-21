@@ -35,8 +35,8 @@ class WledConstants {
 class AppConstants {
   AppConstants._();
 
-  static const String appName = 'Flux';
-  static const String appVersion = '1.0.0';
+  static const String appName = 'W-Link';
+  static const String appVersion = '1.1.3';
 
   /// SharedPreferences keys
   static const String keyDevices = 'flux_devices';

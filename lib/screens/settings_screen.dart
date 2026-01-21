@@ -104,7 +104,7 @@ class SettingsScreen extends ConsumerWidget {
                     ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
 
                     const SizedBox(height: 24),
-                    _buildSectionTitle(context, l10n.aboutFlux),
+                    _buildSectionTitle(context, l10n.aboutWLink),
                     GlassCard(
                       child: Column(
                         children: [
@@ -112,7 +112,7 @@ class SettingsScreen extends ConsumerWidget {
                             leading: const Icon(Icons.info_outline),
                             title: Text(l10n.appVersion),
                             trailing: const Text(
-                              'v1.0.0',
+                              'v1.1.3',
                               style: TextStyle(color: FluxTheme.textMuted),
                             ),
                             onTap: () {},

@@ -33,7 +33,7 @@ abstract class AppStrings {
   String get resetData;
   String get followSystem;
   String get interfaceAndLanguage;
-  String get aboutFlux;
+  String get aboutWLink;
   String get experimental;
   String get appVersion;
   String get projectUrl;
@@ -274,7 +274,7 @@ class ZhStrings implements AppStrings {
   @override
   String get interfaceAndLanguage => '界面与语言';
   @override
-  String get aboutFlux => '关于 Flux';
+  String get aboutWLink => '关于 W-Link';
   @override
   String get experimental => '实验性功能';
   @override
@@ -594,7 +594,7 @@ class EnStrings implements AppStrings {
   @override
   String get interfaceAndLanguage => 'Interface & Language';
   @override
-  String get aboutFlux => 'About Flux';
+  String get aboutWLink => 'About W-Link';
   @override
   String get experimental => 'Experimental';
   @override
