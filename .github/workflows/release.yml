@@ -52,12 +52,12 @@ jobs:
       # 2. Build iOS (No CodeSign)
       # iOS 真正签名需要配置复杂的 Certificate & Provisioning Profile Secrets。
       # 这里演示构建未签名的 .app 并打包为 .ipa (Payload)，仅供测试或自行重签名。
-      - name: Build iOS (No CodeSign)
-        run: |
-          flutter build ios --release --no-codesign
-          mkdir Payload
-          mv build/ios/iphoneos/Runner.app Payload/
-          zip -r release-ios.ipa Payload/
+      # - name: Build iOS (No CodeSign)
+      #   run: |
+      #     flutter build ios --release --no-codesign
+      #     mkdir Payload
+      #     mv build/ios/iphoneos/Runner.app Payload/
+      #     zip -r release-ios.ipa Payload/
 
       # 3. Create Release & Upload Assets
       - name: Create Release
@@ -66,7 +66,7 @@ jobs:
           files: |
             build/app/outputs/bundle/release/app-release.aab
             build/app/outputs/flutter-apk/app-release.apk
-            release-ios.ipa
+            # release-ios.ipa
           draft: false
           prerelease: false
           generate_release_notes: true
