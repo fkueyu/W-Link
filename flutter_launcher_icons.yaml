@@ -5,7 +5,7 @@ flutter_launcher_icons:
   image_path_ios: "assets/icons/icon_light.png"
   # iOS 18 暗色模式图标 (需要透明背景)
   image_path_ios_dark_transparent: "assets/icons/icon_dark.png"
-  remove_alpha_ios: false
+  remove_alpha_ios: true
   
   android: true
   image_path_android: "assets/icons/icon_light.png"

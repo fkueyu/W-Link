@@ -58,6 +58,14 @@ import UIKit
     }
     discoveredServices = []
   }
+
+  // MARK: UISceneSession Lifecycle
+  override func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+    return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+  }
+
+  override func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {
+  }
 }
 
 // MARK: - NetServiceBrowserDelegate
@@ -84,35 +92,36 @@ extension AppDelegate: NetServiceDelegate {
       var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
       
       addressData.withUnsafeBytes { ptr in
-        let sockaddr = ptr.baseAddress!.assumingMemoryBound(to: sockaddr.self)
-        getnameinfo(
-          sockaddr,
-          socklen_t(addressData.count),
+        guard let sockaddr_ptr = ptr.baseAddress?.assumingMemoryBound(to: sockaddr.self) else { return }
+        let sockaddr_len = socklen_t(addressData.count)
+        
+        if getnameinfo(
+          sockaddr_ptr,
+          sockaddr_len,
           &hostname,
           socklen_t(hostname.count),
           nil,
           0,
           NI_NUMERICHOST
-        )
-      }
-      
-      let ipAddress = String(cString: hostname)
-      
-      // 只处理 IPv4 地址
-      if ipAddress.contains(".") && !ipAddress.contains(":") {
-        let device: [String: Any] = [
-          "name": sender.name,
-          "ip": ipAddress,
-          "port": sender.port
-        ]
-        
-        print("[Bonjour] Resolved: \(sender.name) -> \(ipAddress):\(sender.port)")
-        
-        // 实时发送给 Flutter
-        DispatchQueue.main.async { [weak self] in
-          self?.discoveryChannel?.invokeMethod("onDeviceFound", arguments: device)
+        ) == 0 {
+          let ipAddress = String(cString: hostname)
+          
+          // 只处理 IPv4 地址
+          if ipAddress.contains(".") && !ipAddress.contains(":") {
+            let device: [String: Any] = [
+              "name": sender.name,
+              "ip": ipAddress,
+              "port": sender.port
+            ]
+            
+            print("[Bonjour] Resolved: \(sender.name) -> \(ipAddress):\(sender.port)")
+            
+            // 实时发送给 Flutter
+            DispatchQueue.main.async { [weak self] in
+              self?.discoveryChannel?.invokeMethod("onDeviceFound", arguments: device)
+            }
+          }
         }
-        break
       }
     }
   }

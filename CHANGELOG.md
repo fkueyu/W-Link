@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.3] - 2026-01-29
+
+### Fixed / 修复
+
+- **App Icons (iOS)**: Removed alpha channel from iOS icons to comply with App Store submission requirements.
+  - **应用图标 (iOS)**：排除了 iOS 图标的 alpha 透明通道，满足 App Store 上架合规性。
+- **Missing Icons**: Supplemented missing icon sizes (@1x) for iPad and iPhone to eliminate Xcode warnings.
+  - **图标缺失**：补全了 iPad 和 iPhone 缺失的各尺寸图标 (@1x)，消除 Xcode 警告。
+- **Android Icons**: Synchronized all Android icon assets (Legacy, Night, Adaptive) with the new branding.
+  - **Android 图标**：同步更新了 Android 全套图标（包括常规、深色模式及自适应图标）。
+
+### Optimized / 优化
+
+- **Architectural**: Migrated to modern iOS `UIScene` lifecycle for better system compatibility.
+  - **架构改进**：迁移至现代 iOS `UIScene` 生命周期，适配最新系统规范并消除警告。
+- **Bonjour Discovery**: Enhanced native discovery logic for more robust local network device resolution.
+  - **设备发现**：优化了原生 Bonjour 解析逻辑，提升局域网设备发现速度与稳定性。
+
 ## [2.0.2] - 2026-01-29
 
 ### Optimized / 优化
