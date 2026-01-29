@@ -53,6 +53,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     final brightness = _localBrightness ?? state?.bri.toDouble() ?? 0.0;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = ref.watch(l10nProvider);
 
     return RepaintBoundary(
       child: Padding(
@@ -69,10 +70,16 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
               boxShadow: [
                 if (hasGlow)
                   BoxShadow(
-                    color: glowColor.withValues(alpha: isDark ? 0.35 : 0.2),
-                    blurRadius: 24,
+                    color: glowColor.withValues(alpha: isDark ? 0.45 : 0.25),
+                    blurRadius: 32,
                     spreadRadius: 2,
                     offset: const Offset(0, 8),
+                  ),
+                if (isDark) // Deep depth shadow
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
               ],
             ),
@@ -81,18 +88,14 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                 child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? FluxTheme.cardDark.withValues(alpha: 0.6)
-                        : Colors.white.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.white.withValues(alpha: 0.8),
-                      width: 0.5,
-                    ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 24,
+                  ),
+                  decoration: FluxTheme.glassDecoration(
+                    context,
+                    radius: 36,
+                    hasShadow: true,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -100,7 +103,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                       Row(
                         children: [
                           _buildStatusIcon(isOnline, isOn, deviceColor, isDark),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 20),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,19 +115,17 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                                     child: Text(
                                       widget.device.name,
                                       style: TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 19,
                                         fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.5,
+                                        letterSpacing: -0.8,
                                         color: isDark
                                             ? Colors.white
                                             : Colors.black87,
                                       ),
                                       maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
                                 Hero(
                                   tag: 'ip_${widget.device.id}',
                                   child: Material(
@@ -133,9 +134,12 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                                       widget.device.ip,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
                                         color: isDark
-                                            ? Colors.white38
+                                            ? Colors.white.withValues(
+                                                alpha: 0.2,
+                                              )
                                             : Colors.black38,
                                       ),
                                     ),
@@ -144,19 +148,25 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                               ],
                             ),
                           ),
-                          if (isOnline)
-                            _buildPowerToggle(ref, state!, glowColor, isDark),
+                          _buildPowerToggle(
+                            ref,
+                            state!,
+                            glowColor,
+                            isDark,
+                            isOnline,
+                          ),
                         ],
                       ),
                       if (isOnline) ...[
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 28),
                         _buildBrightnessControl(
                           context,
                           ref,
-                          state!,
+                          state,
                           brightness,
                           isOn ? deviceColor : Colors.grey,
                           isDark,
+                          l10n,
                         ),
                       ],
                     ],
@@ -198,8 +208,12 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                     ? Icons.lightbulb_rounded
                     : Icons.lightbulb_outline_rounded),
           color: !isOnline
-              ? (isDark ? Colors.white24 : Colors.black26)
-              : (isOn ? color : (isDark ? Colors.white30 : Colors.black26)),
+              ? (isDark ? Colors.white.withValues(alpha: 0.25) : Colors.black26)
+              : (isOn
+                    ? color
+                    : (isDark
+                          ? Colors.white.withValues(alpha: 0.35)
+                          : Colors.black26)),
           size: 24,
         ),
       ),
@@ -211,7 +225,9 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     WledState state,
     Color glowColor,
     bool isDark,
+    bool isOnline,
   ) {
+    if (!isOnline) return const SizedBox.shrink();
     final isOn = state.on;
     return BouncyButton(
       onTap: () {
@@ -233,28 +249,38 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isOn
-              ? glowColor
+              ? (isDark
+                    ? Color.lerp(
+                        glowColor,
+                        Colors.white,
+                        0.15,
+                      )!.withValues(alpha: 0.8)
+                    : glowColor)
               : (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
+                    ? Colors.white.withValues(alpha: 0.1)
                     : Colors.black.withValues(alpha: 0.05)),
           shape: BoxShape.circle,
           boxShadow: [
             if (isOn)
               BoxShadow(
-                color: glowColor.withValues(alpha: 0.4),
+                color: glowColor.withValues(alpha: isDark ? 0.3 : 0.5),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            if (isDark)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
                 blurRadius: 10,
-                spreadRadius: 1,
+                offset: const Offset(0, 4),
               ),
           ],
         ),
         child: Icon(
           Icons.power_settings_new_rounded,
           color: isOn
-              ? (glowColor.computeLuminance() > 0.5
-                    ? Colors.black
-                    : Colors.white)
-              : (isDark ? Colors.white54 : Colors.black54),
-          size: 22,
+              ? Colors.white
+              : (isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black54),
+          size: 24,
         ),
       ),
     );
@@ -267,66 +293,68 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     double brightness,
     Color deviceColor,
     bool isDark,
+    AppStrings l10n,
   ) {
+    final percent = (brightness / 255 * 100).round();
+
     return Container(
-      height: 40,
+      height: 38,
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.05)
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20),
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(19),
       ),
-      child: SliderTheme(
-        data: SliderThemeData(
-          trackHeight: 40,
-          trackShape: const _FullWidthTrackShape(),
-          thumbShape: SliderComponentShape.noThumb,
-          overlayShape: SliderComponentShape.noOverlay,
-          activeTrackColor: deviceColor.withValues(alpha: isDark ? 0.35 : 0.2),
-          inactiveTrackColor: Colors.transparent,
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(
-                      Icons.light_mode_rounded,
-                      size: 16,
-                      color: isDark ? Colors.white38 : Colors.black38,
-                    ),
-                    Text(
-                      '${(brightness / 255 * 100).round()}%',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? Colors.white38 : Colors.black38,
-                      ),
-                    ),
-                  ],
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 进度填充层
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: (brightness / 255).clamp(0.01, 1.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: deviceColor.withValues(alpha: isDark ? 0.4 : 0.3),
+                  borderRadius: BorderRadius.circular(19),
+                  gradient: LinearGradient(
+                    colors: [
+                      deviceColor.withValues(alpha: isDark ? 0.3 : 0.2),
+                      deviceColor.withValues(alpha: isDark ? 0.8 : 0.7),
+                    ],
+                  ),
                 ),
               ),
             ),
-            Slider(
+          ),
+          // 交互层 (Slider)
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 38,
+              thumbShape: SliderComponentShape.noThumb,
+              overlayShape: SliderComponentShape.noOverlay,
+              activeTrackColor: Colors.transparent,
+              inactiveTrackColor: Colors.transparent,
+              trackShape: const _FullWidthTrackShape(),
+            ),
+            child: Slider(
               value: brightness,
               min: 0,
               max: 255,
-              onChanged: (val) => setState(() => _localBrightness = val),
-              onChangeEnd: (val) {
+              onChanged: (v) => setState(() => _localBrightness = v),
+              onChangeEnd: (v) {
                 setState(() => _localBrightness = null);
+                final bri = v.round();
                 ref
                     .read(deviceFamilyStateProvider(widget.device).notifier)
                     .optimisticUpdate(
-                      (s) => s.copyWith(bri: val.round()),
+                      (s) => s.copyWith(on: bri > 0, bri: bri),
                       () async {
                         final api = WledApiService(
                           baseUrl: widget.device.baseUrl,
                         );
                         try {
-                          return await api.setBrightness(val.round());
+                          return await api.setBrightness(bri);
                         } finally {
                           api.dispose();
                         }
@@ -334,8 +362,36 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                     );
               },
             ),
-          ],
-        ),
+          ),
+          // 内容层 (Icon + Percentage)
+          IgnorePointer(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(
+                    Icons.wb_sunny_rounded,
+                    size: 16,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.3)
+                        : Colors.black38,
+                  ),
+                  Text(
+                    '$percent%',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.6)
+                          : Colors.black.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

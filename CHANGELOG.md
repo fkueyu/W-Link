@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-01-29
+
+### Optimized / 优化
+
+- **UI Details**: Refined UI elements for better aesthetic consistency.
+  - **UI 细节优化**：优化了各处 UI 细节，提升视觉一致性。
+
+### Fixed / 修复
+
+- **Known Issues**: Fixed several identified bugs to improve stability.
+  - **修复已知问题**：修复了若干已知 Bug，提升应用稳定性.
+
 ## [2.0.3] - 2026-01-29
 
 ### Fixed / 修复
@@ -48,6 +60,6 @@ All notable changes to this project will be documented in this file.
 - **Major Release**: Milestone version for W-Link 2.0.
   - **重大更新**：W-Link 2.0 里程碑版本。
 - **Performance**: Improved device discovery and connection stability.
-  - **性能优化**：改进了设备发现和连接稳定性。
+  - **性能优化**：改进了设备发现和连接稳定性.
 - **UI/UX**: Foundation for the new Glassmorphic design language.
   - **UI/UX**：确立了全新的玻璃拟态设计语言。

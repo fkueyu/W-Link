@@ -64,43 +64,100 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // 调整颜色使其更柔和，减少色带感
-    final colors = isDark
-        ? const [
-            Color(0xFF020205), // Deepest Black
-            Color(0xFF0A0A1F), // Navy Black
-            Color(0xFF1E1B4B), // Deep Indigo
-          ]
-        : const [
-            Color(0xFFF8FAFC), // Slate 50
-            Color(0xFFF0F9FF), // Sky 50
-            Color(0xFFEEF2FF), // Indigo 50
-          ];
+    if (!isDark) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFF8FAFC),
+                  Color(0xFFF1F5F9),
+                  Color(0xFFE2E8F0),
+                ],
+              ),
+            ),
+          ),
+          widget.child,
+        ],
+      );
+    }
 
+    // 暗色模式：曜石玻璃 + 极光氛围
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 背景层：独立重绘区域
+        Container(color: const Color(0xFF020205)), // 极深底色
+
         RepaintBoundary(
           child: AnimatedBuilder(
             animation: _controller,
             builder: (context, _) {
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: _topAlignAnimation.value,
-                    end: _bottomAlignAnimation.value,
-                    colors: colors,
-                    tileMode: TileMode.mirror,
+              return Stack(
+                children: [
+                  // 极光 A：深靛
+                  Positioned(
+                    top: -150 + (250 * _topAlignAnimation.value.y),
+                    left: -100 + (200 * _topAlignAnimation.value.x),
+                    child: _buildBlob(
+                      600,
+                      const Color(0xFF1E1B4B).withValues(alpha: 0.7),
+                    ),
                   ),
-                ),
+                  // 极光 B：幽冥紫
+                  Positioned(
+                    bottom: -100 + (300 * _bottomAlignAnimation.value.y),
+                    right: -100 + (250 * _bottomAlignAnimation.value.x),
+                    child: _buildBlob(
+                      550,
+                      const Color(0xFF312E81).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  // 极光 C：品牌紫 (核心提亮)
+                  Positioned(
+                    top: 200 * _topAlignAnimation.value.x,
+                    right: 150 * _bottomAlignAnimation.value.y,
+                    child: _buildBlob(
+                      450,
+                      const Color(0xFF7000FF).withValues(alpha: 0.15),
+                    ),
+                  ),
+                  // 极光 D：翡翠青 (动态修正)
+                  Positioned(
+                    bottom: 200 * _bottomAlignAnimation.value.x,
+                    left: 100 * _topAlignAnimation.value.y,
+                    child: _buildBlob(
+                      500,
+                      const Color(0xFF00F2FF).withValues(alpha: 0.08),
+                    ),
+                  ),
+                ],
               );
             },
           ),
         ),
-        // 内容层：不受背景动画重绘影响
+
+        // 增加一层全局微弱蒙版提升通透度
+        Container(
+          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.2)),
+        ),
+
         widget.child,
       ],
+    );
+  }
+
+  Widget _buildBlob(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [color, color.withValues(alpha: 0.0)]),
+      ),
     );
   }
 }

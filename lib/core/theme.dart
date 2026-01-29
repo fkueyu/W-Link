@@ -12,7 +12,10 @@ class FluxTheme {
   // 品牌色 - AINX 品牌绿
   static const Color primary = Color(0xFFAF47FF);
   static const Color primaryLight = Color(0xFFC47DFF);
-  static const Color primaryDark = Color(0xFF8A2BE2);
+  // static const Color primaryDark = Color(0xFF8A2BE2);
+  static const Color primaryNeon = Color(
+    0xFFD8B4FE,
+  ); // Neon violet for dark mode accents
 
   // 辅助色
   static const Color secondary = Color(0xFFEC4899); // Pink
@@ -27,10 +30,10 @@ class FluxTheme {
   // Dark Mode Colors - Highly Polished 'Deep Night'
   // ===========================================================================
 
-  static const Color _bgDark = Color(0xFF02020A); // Deep Night Black
-  static const Color _surfaceDark = Color(0xFF0F172A); // Slate 900
-  static const Color _textPrimaryDark = Color(0xFFF1F5F9); // Slate 100
-  static const Color _textSecondaryDark = Color(0xFF94A3B8); // Slate 400
+  static const Color _bgDark = Color(0xFF020205);
+  static const Color _surfaceDark = Color(0xFF161621); // Midnight Navy-Black
+  static const Color _textPrimaryDark = Color(0xFFFFFFFF);
+  static const Color _textSecondaryDark = Color(0xFF9499AD); // Muted Blue-Grey
 
   // ===========================================================================
   // Light Mode Colors
@@ -52,7 +55,7 @@ class FluxTheme {
   );
 
   static const LinearGradient bgGradientDark = LinearGradient(
-    colors: [Color(0xFF02020A), Color(0xFF0F172A)],
+    colors: [Color(0xFF000000), Color(0xFF0F0F1A)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -86,10 +89,10 @@ class FluxTheme {
       surface: _surfaceDark,
       textPrimary: _textPrimaryDark,
       textSecondary: _textSecondaryDark,
-      glassBorder: Colors.white.withValues(alpha: 0.08),
+      glassBorder: Colors.white.withValues(alpha: 0.18),
       glassFill: const Color(
-        0xFF1E293B,
-      ).withValues(alpha: 0.6), // Slate 800 glass
+        0xFF11111B,
+      ).withValues(alpha: 0.75), // Deeper glass
     );
   }
 
@@ -241,24 +244,33 @@ class FluxTheme {
     // Dark Mode: 低透明深底 + 弱模糊
     // Dark Mode: Translucent Slate for Deep Night feel
     final defaultFill = isDark
-        ? _surfaceDark.withValues(alpha: 0.60)
+        ? const Color(0xFF161621).withValues(alpha: 0.82)
         : Colors.white.withValues(alpha: 0.65);
 
     final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.10)
+        ? Colors.white.withValues(alpha: 0.22)
         : Colors.white.withValues(alpha: 0.4);
 
     return BoxDecoration(
       color: color ?? defaultFill,
       borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: borderColor, width: 1),
+      border: isDark
+          ? Border.fromBorderSide(BorderSide(color: borderColor, width: 1.2))
+          : Border.all(color: borderColor, width: 0.8),
       boxShadow: hasShadow
           ? [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
+                color: Colors.black.withValues(alpha: isDark ? 0.9 : 0.05),
+                blurRadius: 40,
+                spreadRadius: 2,
+                offset: const Offset(0, 20),
               ),
+              if (isDark)
+                BoxShadow(
+                  color: primary.withValues(alpha: 0.08),
+                  blurRadius: 30,
+                  spreadRadius: -10,
+                ),
             ]
           : null,
     );

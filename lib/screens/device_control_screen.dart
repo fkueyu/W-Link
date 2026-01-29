@@ -71,13 +71,16 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? Colors.white.withValues(alpha: 0.05)
+                          ? const Color(0xFF000000).withValues(
+                              alpha: 0.4,
+                            ) // Deeper glass
                           : Colors.white.withValues(alpha: 0.2),
                       border: Border(
                         bottom: BorderSide(
                           color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
+                              ? Colors.white.withValues(alpha: 0.08)
                               : Colors.black.withValues(alpha: 0.05),
+                          width: 0.5,
                         ),
                       ),
                     ),
@@ -231,10 +234,12 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
             child: Text(
               l10n.settings.toUpperCase(),
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white38 : Colors.black38,
-                letterSpacing: 1.2,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.35)
+                    : Colors.black38,
+                letterSpacing: 1.5,
               ),
             ),
           ),
@@ -283,18 +288,11 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.10)
-                  : Colors.white.withValues(alpha: 0.7),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.white.withValues(alpha: 0.8),
-                width: 0.5,
-              ),
-              borderRadius: BorderRadius.circular(32),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            decoration: FluxTheme.glassDecoration(
+              context,
+              radius: 40,
+              hasShadow: true,
             ),
             child: Column(
               children: [
@@ -308,13 +306,15 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                           Text(
                             l10n.device.toUpperCase(),
                             style: TextStyle(
-                              color: isDark ? Colors.white38 : Colors.black38,
-                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.25)
+                                  : Colors.black38,
+                              fontSize: 12,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: 1.0,
+                              letterSpacing: 2.0,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
                           Hero(
                             tag: 'name_${widget.device.id}',
                             child: Material(
@@ -323,8 +323,8 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                                 widget.device.name,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 28,
-                                  letterSpacing: -1.0,
+                                  fontSize: 30,
+                                  letterSpacing: -1.2,
                                 ),
                               ),
                             ),
@@ -335,7 +335,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                     _buildPowerButton(isOn, color, api, isDark),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 36),
                 _buildBrightnessSector(
                   brightness,
                   isOn,
@@ -349,7 +349,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           ),
         ),
       ),
-    ).animate().fadeIn().slideY(begin: 0.1, duration: 400.ms);
+    );
   }
 
   Widget _buildPowerButton(
@@ -370,28 +370,40 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: isOn
-              ? color
+              ? (isDark
+                    ? Color.lerp(
+                        color,
+                        Colors.white,
+                        0.15,
+                      )!.withValues(alpha: 0.8)
+                    : color)
               : (isDark
-                    ? Colors.white.withValues(alpha: 0.12)
+                    ? Colors.white.withValues(alpha: 0.1)
                     : Colors.black.withValues(alpha: 0.05)),
           shape: BoxShape.circle,
           boxShadow: [
             if (isOn)
               BoxShadow(
-                color: color.withValues(alpha: 0.4),
+                color: color.withValues(alpha: isDark ? 0.3 : 0.5),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            if (isDark)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
                 blurRadius: 15,
-                spreadRadius: 1,
+                offset: const Offset(0, 6),
               ),
           ],
         ),
         child: Icon(
           Icons.power_settings_new_rounded,
           color: isOn
-              ? (color.computeLuminance() > 0.5 ? Colors.black : Colors.white)
-              : (isDark ? Colors.white54 : Colors.black54),
+              ? Colors.white
+              : (isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black54),
           size: 32,
         ),
       ),
@@ -406,59 +418,95 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     bool isDark,
     AppStrings l10n,
   ) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.light_mode_rounded,
-                  size: 16,
-                  color: isOn ? color : Colors.grey,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.brightness.toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                    letterSpacing: 0.5,
-                    color: Colors.grey,
+    final percent = (value / 255 * 100).round();
+
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 进度填充层
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: (value / 255).clamp(0.01, 1.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: isDark ? 0.4 : 0.3),
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withValues(alpha: isDark ? 0.3 : 0.2),
+                      color.withValues(alpha: isDark ? 0.8 : 0.7),
+                    ],
                   ),
                 ),
-              ],
-            ),
-            Text(
-              '${(value / 255 * 100).round()}%',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-                color: isOn ? color : Colors.grey,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SmartSlider(
-          value: value,
-          min: 0,
-          max: 255,
-          activeColor: isOn ? color : Colors.grey,
-          onChanged: (v) => setState(() => _localBrightness = v),
-          onChangeEnd: (v) {
-            setState(() => _localBrightness = null);
-            final bri = v.round();
-            ref
-                .read(deviceStateProvider.notifier)
-                .optimisticUpdate(
-                  (s) => s.copyWith(on: bri > 0, bri: bri),
-                  () => api!.setState({'on': bri > 0, 'bri': bri}),
-                );
-          },
-        ),
-      ],
+          ),
+          // 交互层 (Slider)
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 48,
+              thumbShape: SliderComponentShape.noThumb,
+              overlayShape: SliderComponentShape.noOverlay,
+              activeTrackColor: Colors.transparent,
+              inactiveTrackColor: Colors.transparent,
+              trackShape: const _FullWidthTrackShape(),
+            ),
+            child: Slider(
+              value: value,
+              min: 0,
+              max: 255,
+              onChanged: (v) => setState(() => _localBrightness = v),
+              onChangeEnd: (v) {
+                setState(() => _localBrightness = null);
+                final bri = v.round();
+                ref
+                    .read(deviceStateProvider.notifier)
+                    .optimisticUpdate(
+                      (s) => s.copyWith(on: bri > 0, bri: bri),
+                      () => api!.setState({'on': bri > 0, 'bri': bri}),
+                    );
+              },
+            ),
+          ),
+          // 内容层 (Icon + Percentage)
+          IgnorePointer(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(
+                    Icons.wb_sunny_rounded,
+                    size: 20,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.35)
+                        : Colors.black38,
+                  ),
+                  Text(
+                    '$percent%',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.6)
+                          : Colors.black.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -496,7 +544,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       crossAxisCount: 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.8,
+      childAspectRatio: 2.2,
       children:
           [
                 _buildActionTile(
@@ -645,9 +693,9 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -657,8 +705,8 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                     title,
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                      letterSpacing: -0.3,
+                      fontSize: 15,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   if (subWidget != null)
@@ -668,7 +716,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                       sub,
                       style: TextStyle(
                         color: isDark ? Colors.white38 : Colors.black38,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                       maxLines: 1,
@@ -817,6 +865,62 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => DeviceSettingsSheet(api: api, state: state),
+    );
+  }
+}
+
+class _FullWidthTrackShape extends SliderTrackShape {
+  const _FullWidthTrackShape();
+  @override
+  Rect getPreferredRect({
+    required RenderBox parentBox,
+    Offset offset = Offset.zero,
+    required SliderThemeData sliderTheme,
+    bool isEnabled = false,
+    bool isDiscrete = false,
+  }) {
+    return Rect.fromLTWH(
+      offset.dx,
+      offset.dy,
+      parentBox.size.width,
+      parentBox.size.height,
+    );
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+    Offset? secondaryOffset,
+    bool isDiscrete = false,
+    bool isEnabled = false,
+    double additionalActiveTrackHeight = 0,
+  }) {
+    final Rect trackRect = getPreferredRect(
+      parentBox: parentBox,
+      offset: offset,
+      sliderTheme: sliderTheme,
+    );
+    final Paint activePaint = Paint()
+      ..color = sliderTheme.activeTrackColor ?? Colors.blue;
+    final double visualWidth =
+        trackRect.width * (thumbCenter.dx / trackRect.width);
+    context.canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          trackRect.left,
+          trackRect.top,
+          visualWidth.clamp(0.0, trackRect.width),
+          trackRect.height,
+        ),
+        Radius.circular(trackRect.height / 2),
+      ),
+      activePaint,
     );
   }
 }

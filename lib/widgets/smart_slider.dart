@@ -173,6 +173,43 @@ class _CustomTrackShape extends RoundedRectSliderTrackShape {
     bool isEnabled = false,
     double additionalActiveTrackHeight = 0,
   }) {
+    // Use the context or sliderTheme to determine brightness safely
+    final isDark =
+        sliderTheme.thumbColor == Colors.white; // Common heuristic in our theme
+
+    if (isDark && sliderTheme.activeTrackColor != null) {
+      final trackRect = getPreferredRect(
+        parentBox: parentBox,
+        offset: offset,
+        sliderTheme: sliderTheme,
+        isEnabled: isEnabled,
+        isDiscrete: isDiscrete,
+      );
+
+      // Draw Glow Shadow for Active Track
+      final glowPaint = Paint()
+        ..color = sliderTheme.activeTrackColor!.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+      context.canvas.drawRRect(
+        RRect.fromLTRBAndCorners(
+          trackRect.left,
+          trackRect.top,
+          thumbCenter.dx,
+          trackRect.bottom,
+          topLeft: Radius.circular(trackRect.height / 2),
+          bottomLeft: Radius.circular(trackRect.height / 2),
+          topRight: thumbCenter.dx >= trackRect.right
+              ? Radius.circular(trackRect.height / 2)
+              : Radius.zero,
+          bottomRight: thumbCenter.dx >= trackRect.right
+              ? Radius.circular(trackRect.height / 2)
+              : Radius.zero,
+        ),
+        glowPaint,
+      );
+    }
+
     super.paint(
       context,
       offset,
