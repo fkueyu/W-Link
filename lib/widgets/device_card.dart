@@ -84,7 +84,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
+                        ? FluxTheme.cardDark.withValues(alpha: 0.6)
                         : Colors.white.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
@@ -282,7 +282,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
           trackShape: const _FullWidthTrackShape(),
           thumbShape: SliderComponentShape.noThumb,
           overlayShape: SliderComponentShape.noOverlay,
-          activeTrackColor: deviceColor.withValues(alpha: 0.2),
+          activeTrackColor: deviceColor.withValues(alpha: isDark ? 0.35 : 0.2),
           inactiveTrackColor: Colors.transparent,
         ),
         child: Stack(
@@ -352,7 +352,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                     margin: const EdgeInsets.all(32),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      color: isDark ? FluxTheme.cardDark : Colors.white,
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(

@@ -71,7 +71,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? Colors.black.withValues(alpha: 0.2)
+                          ? Colors.white.withValues(alpha: 0.05)
                           : Colors.white.withValues(alpha: 0.2),
                       border: Border(
                         bottom: BorderSide(
@@ -286,7 +286,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
+                  ? Colors.white.withValues(alpha: 0.10)
                   : Colors.white.withValues(alpha: 0.7),
               border: Border.all(
                 color: isDark
@@ -375,7 +375,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           color: isOn
               ? color
               : (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
+                    ? Colors.white.withValues(alpha: 0.12)
                     : Colors.black.withValues(alpha: 0.05)),
           shape: BoxShape.circle,
           boxShadow: [

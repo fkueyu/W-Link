@@ -171,7 +171,7 @@ class DeviceListScreen extends ConsumerWidget {
                             elevation: 12,
                             color:
                                 Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF2C2C2E)
+                                ? FluxTheme.cardDark
                                 : Colors.white.withValues(alpha: 0.98),
                             onSelected: (value) {
                               if (value == 'groups') {

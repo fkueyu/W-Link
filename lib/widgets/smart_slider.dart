@@ -133,7 +133,9 @@ class _SmartSliderState extends State<SmartSlider> {
             activeTrackColor: widget.enabled
                 ? effectiveColor
                 : effectiveColor.withValues(alpha: 0.3),
-            inactiveTrackColor: FluxTheme.surfaceLight,
+            inactiveTrackColor: theme.brightness == Brightness.dark
+                ? Colors.white24
+                : Colors.black12,
             thumbColor: Colors.white,
             thumbShape: const RoundSliderThumbShape(
               enabledThumbRadius: 10,

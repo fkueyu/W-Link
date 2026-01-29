@@ -67,9 +67,9 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
     // 调整颜色使其更柔和，减少色带感
     final colors = isDark
         ? const [
-            Color(0xFF0F172A), // Slate 900
-            Color(0xFF1E1B4B), // Indigo 950
-            Color(0xFF312E81), // Indigo 900
+            Color(0xFF020205), // Deepest Black
+            Color(0xFF0A0A1F), // Navy Black
+            Color(0xFF1E1B4B), // Deep Indigo
           ]
         : const [
             Color(0xFFF8FAFC), // Slate 50

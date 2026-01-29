@@ -24,13 +24,13 @@ class FluxTheme {
   static const Color error = Color(0xFFEF4444);
 
   // ===========================================================================
-  // Dark Mode Colors
+  // Dark Mode Colors - Highly Polished 'Deep Night'
   // ===========================================================================
 
-  static const Color _bgDark = Color(0xFF0F0F1A);
-  static const Color _surfaceDark = Color(0xFF1E1E2E);
-  static const Color _textPrimaryDark = Color(0xFFF8FAFC);
-  static const Color _textSecondaryDark = Color(0xFF94A3B8);
+  static const Color _bgDark = Color(0xFF02020A); // Deep Night Black
+  static const Color _surfaceDark = Color(0xFF0F172A); // Slate 900
+  static const Color _textPrimaryDark = Color(0xFFF1F5F9); // Slate 100
+  static const Color _textSecondaryDark = Color(0xFF94A3B8); // Slate 400
 
   // ===========================================================================
   // Light Mode Colors
@@ -52,7 +52,7 @@ class FluxTheme {
   );
 
   static const LinearGradient bgGradientDark = LinearGradient(
-    colors: [_bgDark, Color(0xFF1A1A2E)],
+    colors: [Color(0xFF02020A), Color(0xFF0F172A)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -86,8 +86,10 @@ class FluxTheme {
       surface: _surfaceDark,
       textPrimary: _textPrimaryDark,
       textSecondary: _textSecondaryDark,
-      glassBorder: Colors.white.withValues(alpha: 0.1),
-      glassFill: _surfaceDark.withValues(alpha: 0.6),
+      glassBorder: Colors.white.withValues(alpha: 0.08),
+      glassFill: const Color(
+        0xFF1E293B,
+      ).withValues(alpha: 0.6), // Slate 800 glass
     );
   }
 
@@ -237,12 +239,13 @@ class FluxTheme {
 
     // Light Mode: 高透明白底 + 强模糊 (类似 iOS)
     // Dark Mode: 低透明深底 + 弱模糊
+    // Dark Mode: Translucent Slate for Deep Night feel
     final defaultFill = isDark
-        ? const Color(0xFF1E1E2E).withValues(alpha: 0.6)
+        ? _surfaceDark.withValues(alpha: 0.60)
         : Colors.white.withValues(alpha: 0.65);
 
     final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.1)
+        ? Colors.white.withValues(alpha: 0.10)
         : Colors.white.withValues(alpha: 0.4);
 
     return BoxDecoration(

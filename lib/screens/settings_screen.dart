@@ -138,7 +138,7 @@ class SettingsScreen extends ConsumerWidget {
                             title: l10n.appVersion,
                             icon: Icons.info_outline_rounded,
                             iconColor: Colors.tealAccent,
-                            value: 'v1.1.4',
+                            value: 'v2.0.1',
                           ),
                           _buildValueTile(
                             context: context,
@@ -462,7 +462,7 @@ class SettingsScreen extends ConsumerWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        color: isDark ? FluxTheme.cardDark : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
@@ -528,7 +528,7 @@ class SettingsScreen extends ConsumerWidget {
                     margin: const EdgeInsets.all(32),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      color: isDark ? FluxTheme.cardDark : Colors.white,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Column(
