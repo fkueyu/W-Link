@@ -141,7 +141,8 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   // 轮询间隔（秒）
   static const _pollIntervalSeconds = 5;
   // 操作后保护时间（秒）：在此时间内忽略所有外部状态更新
-  static const _protectionSeconds = 5;
+  // 增加到 8 秒，确保 WLED 固件有足够时间完成写入并同步到后续的轮询中
+  static const _protectionSeconds = 8;
 
   int _failureCount = 0;
   // 连续失败阈值：允许 2 次失败 (10秒)，第 3 次失败才报错
@@ -318,7 +319,7 @@ final presetsProvider = FutureProvider<List<WledPreset>>((ref) async {
 
   presetsMap.forEach((key, value) {
     final id = int.tryParse(key);
-    if (id != null && value is Map<String, dynamic>) {
+    if (id != null && id != 0 && value is Map<String, dynamic>) {
       presets.add(WledPreset.fromJson(id, value));
     }
   });

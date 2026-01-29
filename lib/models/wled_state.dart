@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'wled_segment.dart';
+import 'wled_info.dart';
 
 part 'wled_state.g.dart';
 
@@ -37,6 +38,18 @@ class WledState {
   @JsonKey(name: 'udpn')
   final WledUdpSync udpn;
 
+  /// LED 映射 ID
+  @JsonKey(defaultValue: 0)
+  final int ledmap;
+
+  /// 实时覆盖模式 (0=off, 1=until live ends, 2=until reboot)
+  @JsonKey(defaultValue: 0)
+  final int lor;
+
+  /// 设备元信息 (可选，通常在 /json 响应中)
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final WledInfo info;
+
   const WledState({
     required this.on,
     required this.bri,
@@ -47,6 +60,9 @@ class WledState {
     this.mainSeg = 0,
     this.nl = const WledNightlight(),
     this.udpn = const WledUdpSync(),
+    this.ledmap = 0,
+    this.lor = 0,
+    this.info = const WledInfo(ver: '', vid: 0, leds: WledLedInfo(), name: ''),
   });
 
   factory WledState.fromJson(Map<String, dynamic> json) =>
@@ -54,7 +70,6 @@ class WledState {
 
   Map<String, dynamic> toJson() => _$WledStateToJson(this);
 
-  /// 乐观更新：创建修改后的副本
   WledState copyWith({
     bool? on,
     int? bri,
@@ -65,6 +80,9 @@ class WledState {
     int? mainSeg,
     WledNightlight? nl,
     WledUdpSync? udpn,
+    int? ledmap,
+    int? lor,
+    WledInfo? info,
   }) {
     return WledState(
       on: on ?? this.on,
@@ -76,6 +94,9 @@ class WledState {
       mainSeg: mainSeg ?? this.mainSeg,
       nl: nl ?? this.nl,
       udpn: udpn ?? this.udpn,
+      ledmap: ledmap ?? this.ledmap,
+      lor: lor ?? this.lor,
+      info: info ?? this.info,
     );
   }
 
@@ -153,16 +174,31 @@ class WledUdpSync {
   @JsonKey(name: 'recv')
   final bool receive;
 
-  const WledUdpSync({this.send = false, this.receive = true});
+  /// 发送同步组
+  @JsonKey(defaultValue: 1)
+  final int sgrp;
+
+  /// 接收同步组
+  @JsonKey(defaultValue: 1)
+  final int rgrp;
+
+  const WledUdpSync({
+    this.send = false,
+    this.receive = true,
+    this.sgrp = 1,
+    this.rgrp = 1,
+  });
 
   factory WledUdpSync.fromJson(Map<String, dynamic> json) =>
       _$WledUdpSyncFromJson(json);
   Map<String, dynamic> toJson() => _$WledUdpSyncToJson(this);
 
-  WledUdpSync copyWith({bool? send, bool? receive}) {
+  WledUdpSync copyWith({bool? send, bool? receive, int? sgrp, int? rgrp}) {
     return WledUdpSync(
       send: send ?? this.send,
       receive: receive ?? this.receive,
+      sgrp: sgrp ?? this.sgrp,
+      rgrp: rgrp ?? this.rgrp,
     );
   }
 }

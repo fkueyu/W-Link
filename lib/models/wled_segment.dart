@@ -61,6 +61,74 @@ class WledSegment {
   /// 分段亮度 0-255 (如果设置)
   final int? bri;
 
+  /// 分段名称
+  @JsonKey(defaultValue: '')
+  final String n;
+
+  /// 分组数量
+  @JsonKey(defaultValue: 1)
+  final int grp;
+
+  /// 间距数量
+  @JsonKey(defaultValue: 0)
+  final int spc;
+
+  /// 2D 起始 Y
+  @JsonKey(defaultValue: 0)
+  final int startY;
+
+  /// 2D 结束 Y
+  @JsonKey(defaultValue: 0)
+  final int stopY;
+
+  /// 2D 垂直反转
+  @JsonKey(defaultValue: false)
+  final bool rY;
+
+  /// 2D 垂直镜像
+  @JsonKey(defaultValue: false)
+  final bool mY;
+
+  /// 2D 转置 (交换 X/Y)
+  @JsonKey(defaultValue: false)
+  final bool tp;
+
+  /// 分段偏移量
+  @JsonKey(name: 'of', defaultValue: 0)
+  final int offset;
+
+  /// 冻结效果 (暂停动画)
+  @JsonKey(defaultValue: false)
+  final bool frz;
+
+  /// 效果选项1
+  @JsonKey(defaultValue: false)
+  final bool o1;
+
+  /// 效果选项2
+  @JsonKey(defaultValue: false)
+  final bool o2;
+
+  /// 效果选项3
+  @JsonKey(defaultValue: false)
+  final bool o3;
+
+  /// 色温控制 (0-255, 127=中间)
+  @JsonKey(defaultValue: 127)
+  final int cct;
+
+  /// 设置集 ID
+  @JsonKey(name: 'set', defaultValue: 0)
+  final int setId;
+
+  /// 声音输入选择
+  @JsonKey(defaultValue: 0)
+  final int si;
+
+  /// 1D→2D 映射模式
+  @JsonKey(defaultValue: 0)
+  final int m12;
+
   const WledSegment({
     required this.id,
     this.start = 0,
@@ -79,6 +147,23 @@ class WledSegment {
     this.rev = false,
     this.mi = false,
     this.bri,
+    this.n = '',
+    this.grp = 1,
+    this.spc = 0,
+    this.startY = 0,
+    this.stopY = 0,
+    this.rY = false,
+    this.mY = false,
+    this.tp = false,
+    this.offset = 0,
+    this.frz = false,
+    this.o1 = false,
+    this.o2 = false,
+    this.o3 = false,
+    this.cct = 127,
+    this.setId = 0,
+    this.si = 0,
+    this.m12 = 0,
   });
 
   factory WledSegment.fromJson(Map<String, dynamic> json) =>
@@ -104,6 +189,23 @@ class WledSegment {
     bool? rev,
     bool? mi,
     int? bri,
+    String? n,
+    int? grp,
+    int? spc,
+    int? startY,
+    int? stopY,
+    bool? rY,
+    bool? mY,
+    bool? tp,
+    int? offset,
+    bool? frz,
+    bool? o1,
+    bool? o2,
+    bool? o3,
+    int? cct,
+    int? setId,
+    int? si,
+    int? m12,
   }) {
     return WledSegment(
       id: id ?? this.id,
@@ -123,6 +225,23 @@ class WledSegment {
       rev: rev ?? this.rev,
       mi: mi ?? this.mi,
       bri: bri ?? this.bri,
+      n: n ?? this.n,
+      grp: grp ?? this.grp,
+      spc: spc ?? this.spc,
+      startY: startY ?? this.startY,
+      stopY: stopY ?? this.stopY,
+      rY: rY ?? this.rY,
+      mY: mY ?? this.mY,
+      tp: tp ?? this.tp,
+      offset: offset ?? this.offset,
+      frz: frz ?? this.frz,
+      o1: o1 ?? this.o1,
+      o2: o2 ?? this.o2,
+      o3: o3 ?? this.o3,
+      cct: cct ?? this.cct,
+      setId: setId ?? this.setId,
+      si: si ?? this.si,
+      m12: m12 ?? this.m12,
     );
   }
 

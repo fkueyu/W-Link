@@ -1,8 +1,8 @@
-# W-Link (幻彩) - Modern WLED Controller
+# W-Link (幻彩) - Modern [WLED](https://kno.wled.ge/) Controller
 
 **🇨🇳 中文 | [🇺🇸 English](README_EN.md)**
 
-W-Link（幻彩）是一个现代化、极简设计的 WLED 设备控制应用，基于 Flutter 构建。它旨在提供流畅、直观的用户体验，让 WLED 灯带的管理变得简单而优雅。（注：该项目由 AI 完成，仅供学习参考）
+W-Link（幻彩）是一个现代化、极简设计的 [WLED](https://kno.wled.ge/) 设备控制应用，基于 Flutter 构建。它旨在提供流畅、直观的用户体验，让 [WLED](https://kno.wled.ge/) 灯带的管理变得简单而优雅。（注：该项目由 AI 完成，仅供学习参考）
 
 🌐 **官网**: [https://ainx.ink/](https://ainx.ink/)
 🍎 **iOS**: 已上架 App Store，请访问官网获取下载链接
@@ -10,7 +10,7 @@ W-Link（幻彩）是一个现代化、极简设计的 WLED 设备控制应用�
 
 ## ✨ 特性 (Features)
 
-* **自动发现**: 通过 mDNS 自动发现局域网内的 WLED 设备，零配置上手。
+* **自动发现**: 通过 mDNS 自动发现局域网内的 [WLED](https://kno.wled.ge/) 设备，零配置上手。
 * **实时控制**: 毫秒级响应的开关、亮度、颜色调节。
 * **乐观 UI (Optimistic UI)**: 操作即时反馈，无视网络延迟，提供丝般顺滑体验。
 * **现代设计**: 采用 Glassmorphism 玻璃拟态设计，配合 `flutter_animate` 带来的细腻微交互。

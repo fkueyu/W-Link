@@ -23,14 +23,18 @@ class WledApiService {
     return WledFullResponse.fromJson(json);
   }
 
-  /// 获取设备状态
+  /// 获取设备状态 (包含 info 注入)
   Future<WledState> getState() async {
-    final response = await _get('/json/state');
+    final response = await _get('/json');
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return WledState.fromJson(json);
+    final state = WledState.fromJson(json['state'] as Map<String, dynamic>);
+    final info = WledInfo.fromJson(json['info'] as Map<String, dynamic>);
+    return state.copyWith(info: info);
   }
 
   /// 获取设备信息
+
+  /// 2D 起始 X
   Future<WledInfo> getInfo() async {
     final response = await _get('/json/info');
     final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -226,6 +230,61 @@ class WledApiService {
     });
   }
 
+  /// 批量设置分段属性
+  Future<WledState?> setSegmentState(
+    int segmentId, {
+    bool? on,
+    int? bri,
+    int? start,
+    int? stop,
+    int? grp,
+    int? spc,
+    String? n,
+    int? startY,
+    int? stopY,
+    bool? rev,
+    bool? mi,
+    bool? rY,
+    bool? mY,
+    bool? tp,
+    int? offset,
+    bool? frz,
+    bool? o1,
+    bool? o2,
+    bool? o3,
+    int? cct,
+    int? si,
+    int? m12,
+  }) {
+    final seg = <String, dynamic>{'id': segmentId};
+    if (on != null) seg['on'] = on;
+    if (bri != null) seg['bri'] = bri;
+    if (start != null) seg['start'] = start;
+    if (stop != null) seg['stop'] = stop;
+    if (grp != null) seg['grp'] = grp;
+    if (spc != null) seg['spc'] = spc;
+    if (n != null) seg['n'] = n;
+    if (startY != null) seg['startY'] = startY;
+    if (stopY != null) seg['stopY'] = stopY;
+    if (rev != null) seg['rev'] = rev;
+    if (mi != null) seg['mi'] = mi;
+    if (rY != null) seg['rY'] = rY;
+    if (mY != null) seg['mY'] = mY;
+    if (tp != null) seg['tp'] = tp;
+    if (offset != null) seg['of'] = offset;
+    if (frz != null) seg['frz'] = frz;
+    if (o1 != null) seg['o1'] = o1;
+    if (o2 != null) seg['o2'] = o2;
+    if (o3 != null) seg['o3'] = o3;
+    if (cct != null) seg['cct'] = cct;
+    if (si != null) seg['si'] = si;
+    if (m12 != null) seg['m12'] = m12;
+
+    return setState({
+      'seg': [seg],
+    });
+  }
+
   // ============================================================================
   // 高级设置 (Settings)
   // ============================================================================
@@ -247,13 +306,28 @@ class WledApiService {
   }
 
   /// 设置同步 (UDP Sync)
-  Future<WledState?> setSync({bool? send, bool? receive}) {
+  Future<WledState?> setSync({
+    bool? send,
+    bool? receive,
+    int? sgrp,
+    int? rgrp,
+  }) {
     final udpn = <String, dynamic>{};
     if (send != null) udpn['send'] = send;
     if (receive != null) udpn['recv'] = receive;
+    if (sgrp != null) udpn['sgrp'] = sgrp;
+    if (rgrp != null) udpn['rgrp'] = rgrp;
 
     return setState({'udpn': udpn});
   }
+
+  /// 设置 LED 映射 ID
+  Future<WledState?> setLedMap(int mapId) => setState({'ledmap': mapId});
+
+  /// 设置实时覆盖模式
+  /// [mode] 0=off, 1=until live ends, 2=until reboot
+  Future<WledState?> setLiveOverride(int mode) =>
+      setState({'lor': mode.clamp(0, 2)});
 
   /// 设置过渡时间
   /// [duration] 单位为 100ms，例如 7 = 700ms

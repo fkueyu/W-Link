@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,35 +15,46 @@ class GroupsManagementScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groups = ref.watch(deviceGroupsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: AnimatedBackground(
         child: SafeArea(
+          bottom: false,
           child: Column(
             children: [
-              // 导航栏
+              // iOS Style Navigation Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Expanded(
-                      child: Text(
-                        '设备分组',
-                        style: Theme.of(context).textTheme.titleLarge,
-                        textAlign: TextAlign.center,
+                    BouncyButton(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.chevron_left_rounded, size: 28),
                       ),
                     ),
-                    // 占位，保持标题居中
-                    const SizedBox(width: 48),
+                    const SizedBox(width: 16),
+                    Text(
+                      '设备分组',
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                    ),
                   ],
                 ),
               ),
 
-              // 分组列表
+              // Groups List
               Expanded(
                 child: groups.isEmpty
                     ? Center(
@@ -50,36 +62,47 @@ class GroupsManagementScreen extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.grid_view,
-                              size: 64,
-                              color: FluxTheme.textMuted.withValues(alpha: 0.5),
+                              Icons.grid_view_rounded,
+                              size: 80,
+                              color: isDark
+                                  ? Colors.white10
+                                  : Colors.black.withValues(alpha: 0.1),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               '暂无分组',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(color: FluxTheme.textMuted),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? Colors.white30
+                                    : Colors.black.withValues(alpha: 0.3),
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '点击右下角按钮创建分组',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: FluxTheme.textMuted),
+                              '点击下方按钮开启高效管理',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDark
+                                    ? Colors.white24
+                                    : Colors.black.withValues(alpha: 0.2),
+                              ),
                             ),
                           ],
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                         itemCount: groups.length,
                         itemBuilder: (context, index) {
                           final group = groups[index];
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(bottom: 20),
                             child: _GroupCard(group: group)
                                 .animate()
-                                .fadeIn(delay: (index * 50).ms)
-                                .slideY(begin: 0.1),
+                                .fadeIn(delay: (index * 100).ms)
+                                .slideY(begin: 0.1, curve: Curves.easeOutQuart),
                           );
                         },
                       ),
@@ -88,46 +111,226 @@ class GroupsManagementScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateGroupDialog(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('新建分组'),
-        backgroundColor: FluxTheme.primaryColor,
-      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton:
+          BouncyButton(
+                onTap: () => _showCreateGroupDialog(context, ref),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.white.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.white.withValues(alpha: 0.8),
+                          width: 0.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_rounded,
+                            color: FluxTheme.primary,
+                            size: 24,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            '新建分组',
+                            style: TextStyle(
+                              color: FluxTheme.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .animate()
+              .fadeIn(delay: 500.ms)
+              .slideY(begin: 0.5, curve: Curves.easeOutBack),
     );
   }
 
   void _showCreateGroupDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('新建分组'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: '分组名称',
-            hintText: '例如：客厅、卧室...',
-            border: OutlineInputBorder(),
-          ),
+      builder: (context) => Center(
+        child: SingleChildScrollView(
+          child:
+              Material(
+                    type: MaterialType.transparency,
+                    child: Container(
+                      margin: const EdgeInsets.all(24),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.black.withValues(alpha: 0.7)
+                                  : Colors.white.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.05),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: FluxTheme.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.grid_view_rounded,
+                                    color: FluxTheme.primary,
+                                    size: 32,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  '新建分组',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                TextField(
+                                  controller: controller,
+                                  decoration: InputDecoration(
+                                    hintText: '分组名称 (如：客厅、卧室)',
+                                    prefixIcon: const Icon(Icons.edit_rounded),
+                                    filled: true,
+                                    fillColor: isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.black.withValues(alpha: 0.03),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                  autofocus: true,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (val) {
+                                    if (val.trim().isNotEmpty) {
+                                      ref
+                                          .read(deviceGroupsProvider.notifier)
+                                          .createGroup(val.trim());
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '取消',
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white54
+                                                : Colors.black54,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: FilledButton(
+                                        onPressed: () {
+                                          final name = controller.text.trim();
+                                          if (name.isNotEmpty) {
+                                            ref
+                                                .read(
+                                                  deviceGroupsProvider.notifier,
+                                                )
+                                                .createGroup(name);
+                                            Navigator.pop(context);
+                                          }
+                                        },
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: FluxTheme.primary,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          '创建',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .animate()
+                  .scale(
+                    begin: const Offset(0.9, 0.9),
+                    curve: Curves.easeOutBack,
+                    duration: 300.ms,
+                  )
+                  .fadeIn(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                ref.read(deviceGroupsProvider.notifier).createGroup(name);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('创建'),
-          ),
-        ],
       ),
     );
   }
@@ -145,19 +348,49 @@ class _GroupCard extends ConsumerWidget {
         .where((d) => group.deviceIds.contains(d.id))
         .toList();
     final controlService = ref.watch(groupControlServiceProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GlassCard(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
-          // 标题行
+          // Header Row
           ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: FluxTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.layers_rounded,
+                color: FluxTheme.primary,
+                size: 24,
+              ),
+            ),
             title: Text(
               group.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: -0.5,
+              ),
             ),
-            subtitle: Text('${groupDevices.length} 个设备'),
+            subtitle: Text(
+              '${groupDevices.length} 个设备',
+              style: TextStyle(
+                color: isDark ? Colors.white54 : Colors.black45,
+                fontSize: 13,
+              ),
+            ),
             trailing: PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert_rounded,
+                color: isDark ? Colors.white38 : Colors.black38,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              elevation: 8,
               onSelected: (value) {
                 if (value == 'rename') {
                   _showRenameDialog(context, ref);
@@ -166,23 +399,36 @@ class _GroupCard extends ConsumerWidget {
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'rename',
                   child: Row(
                     children: [
-                      Icon(Icons.edit, size: 20),
-                      SizedBox(width: 8),
-                      Text('重命名'),
+                      const Icon(Icons.edit_note_rounded, size: 20),
+                      const SizedBox(width: 12),
+                      const Text(
+                        '重命名',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete, color: FluxTheme.error, size: 20),
-                      SizedBox(width: 8),
-                      Text('删除', style: TextStyle(color: FluxTheme.error)),
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        color: Colors.redAccent.withValues(alpha: 0.8),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '删除',
+                        style: TextStyle(
+                          color: Colors.redAccent.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -190,90 +436,175 @@ class _GroupCard extends ConsumerWidget {
             ),
           ),
 
-          const Divider(height: 1),
-
-          // 快捷控制栏
+          // Control Panel
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _ControlButton(
-                  icon: Icons.power_settings_new,
-                  label: '开',
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    controlService.setPower(group, true);
-                  },
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.02),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _ControlButton(
+                        icon: Icons.power_rounded,
+                        label: '开启',
+                        color: Colors.greenAccent,
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          controlService.setPower(group, true);
+                        },
+                      ),
+                    ),
+                    VerticalDivider(
+                      width: 1,
+                      indent: 12,
+                      endIndent: 12,
+                      color: isDark
+                          ? Colors.white10
+                          : Colors.black.withValues(alpha: 0.1),
+                    ),
+                    Expanded(
+                      child: _ControlButton(
+                        icon: Icons.power_settings_new_rounded,
+                        label: '关闭',
+                        color: Colors.redAccent,
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          controlService.setPower(group, false);
+                        },
+                      ),
+                    ),
+                    VerticalDivider(
+                      width: 1,
+                      indent: 12,
+                      endIndent: 12,
+                      color: isDark
+                          ? Colors.white10
+                          : Colors.black.withValues(alpha: 0.1),
+                    ),
+                    Expanded(
+                      child: _ControlButton(
+                        icon: Icons.brightness_6_rounded,
+                        label: '最亮',
+                        color: Colors.amberAccent,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          controlService.setBrightness(group, 255);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                _ControlButton(
-                  icon: Icons.power_off,
-                  label: '关',
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    controlService.setPower(group, false);
-                  },
-                ),
-                // 亮度 Quick Actions
-                _ControlButton(
-                  icon: Icons.brightness_high,
-                  label: '最大',
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    controlService.setBrightness(group, 255);
-                  },
-                ),
-              ],
+              ),
             ),
           ),
 
-          const Divider(height: 1),
-
-          // 展开/收起设备列表
-          ExpansionTile(
-            title: const Text('设备管理', style: TextStyle(fontSize: 14)),
-            initiallyExpanded: group.isExpanded,
-            onExpansionChanged: (expanded) {
-              ref.read(deviceGroupsProvider.notifier).toggleExpanded(group.id);
-            },
-            controlAffinity: ListTileControlAffinity.leading,
-            children: [
-              // 已在组内的设备
-              if (groupDevices.isNotEmpty)
-                ...groupDevices.map(
-                  (device) => ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.lightbulb_outline, size: 20),
-                    title: Text(device.name),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.remove_circle_outline,
-                        color: FluxTheme.error,
+          // Device Management Expansion
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              title: const Text(
+                '成员管理',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              initiallyExpanded: group.isExpanded,
+              onExpansionChanged: (expanded) {
+                ref
+                    .read(deviceGroupsProvider.notifier)
+                    .toggleExpanded(group.id);
+              },
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+              childrenPadding: EdgeInsets.zero,
+              children: [
+                if (groupDevices.isNotEmpty)
+                  ...groupDevices.map(
+                    (device) => ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 24,
                       ),
-                      onPressed: () {
-                        ref
-                            .read(deviceGroupsProvider.notifier)
-                            .removeDeviceFromGroup(group.id, device.id);
-                      },
+                      dense: true,
+                      leading: const Icon(
+                        Icons.light_rounded,
+                        size: 18,
+                        color: FluxTheme.primary,
+                      ),
+                      title: Text(
+                        device.name,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      trailing: BouncyButton(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          ref
+                              .read(deviceGroupsProvider.notifier)
+                              .removeDeviceFromGroup(group.id, device.id);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.remove_rounded,
+                            color: Colors.redAccent,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: BouncyButton(
+                    onTap: () => _showAddDeviceSheet(context, ref, devices),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: FluxTheme.primary.withValues(alpha: 0.3),
+                          width: 1,
+                          style: BorderStyle.solid,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        color: FluxTheme.primary.withValues(alpha: 0.05),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_circle_outline_rounded,
+                            size: 18,
+                            color: FluxTheme.primary,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            '添加成员设备',
+                            style: TextStyle(
+                              color: FluxTheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-
-              const Divider(),
-
-              // 添加设备按钮
-              ListTile(
-                leading: const Icon(
-                  Icons.add_circle_outline,
-                  color: FluxTheme.primaryColor,
-                ),
-                title: const Text(
-                  '添加设备',
-                  style: TextStyle(color: FluxTheme.primaryColor),
-                ),
-                onTap: () => _showAddDeviceSheet(context, ref, devices),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -282,57 +613,203 @@ class _GroupCard extends ConsumerWidget {
 
   void _showRenameDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController(text: group.name);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('重命名分组'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+      builder: (context) => Center(
+        child: SingleChildScrollView(
+          child:
+              Material(
+                    type: MaterialType.transparency,
+                    child: Container(
+                      margin: const EdgeInsets.all(24),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.black.withValues(alpha: 0.7)
+                                  : Colors.white.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.05),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  '重命名分组',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                TextField(
+                                  controller: controller,
+                                  autofocus: true,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.black.withValues(alpha: 0.03),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text(
+                                          '取消',
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white54
+                                                : Colors.black54,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: FluxTheme.primary,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          final name = controller.text.trim();
+                                          if (name.isNotEmpty) {
+                                            ref
+                                                .read(
+                                                  deviceGroupsProvider.notifier,
+                                                )
+                                                .renameGroup(group.id, name);
+                                            Navigator.pop(context);
+                                          }
+                                        },
+                                        child: const Text('保存'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .animate()
+                  .scale(
+                    begin: const Offset(0.9, 0.9),
+                    curve: Curves.easeOutBack,
+                  )
+                  .fadeIn(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                ref
-                    .read(deviceGroupsProvider.notifier)
-                    .renameGroup(group.id, name);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('保存'),
-          ),
-        ],
       ),
     );
   }
 
   void _showDeleteConfirmDialog(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除分组'),
-        content: Text('确定要删除分组 "${group.name}" 吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: FluxTheme.error),
-            onPressed: () {
-              ref.read(deviceGroupsProvider.notifier).deleteGroup(group.id);
-              Navigator.pop(context);
-            },
-            child: const Text('删除'),
-          ),
-        ],
+      builder: (context) => Center(
+        child:
+            Material(
+                  type: MaterialType.transparency,
+                  child: Container(
+                    margin: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.redAccent,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          '删除确认',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '确定要删除分组 "${group.name}" 吗？此操作不可撤销。',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(
+                                  '取消',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white30
+                                        : Colors.black38,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  ref
+                                      .read(deviceGroupsProvider.notifier)
+                                      .deleteGroup(group.id);
+                                  Navigator.pop(context);
+                                },
+                                child: const Text('删除'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .animate()
+                .scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOutBack)
+                .fadeIn(),
       ),
     );
   }
@@ -345,52 +822,143 @@ class _GroupCard extends ConsumerWidget {
     final availableDevices = allDevices
         .where((d) => !group.deviceIds.contains(d.id))
         .toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
         decoration: BoxDecoration(
-          color: FluxTheme.surfaceDark,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '添加设备',
-                style: Theme.of(context).textTheme.titleMedium,
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white10
+                    : Colors.black.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
+            const SizedBox(height: 24),
+            Text(
+              '添加设备到 "${group.name}"',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 20),
             if (availableDevices.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(32),
-                child: Text('没有可添加的设备'),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 64,
+                        color: isDark
+                            ? Colors.white10
+                            : Colors.black.withValues(alpha: 0.1),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        '没有可添加的设备',
+                        style: TextStyle(
+                          color: isDark ? Colors.white24 : Colors.black26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               )
             else
               Expanded(
                 child: ListView.builder(
-                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: availableDevices.length,
                   itemBuilder: (context, index) {
                     final device = availableDevices[index];
-                    return ListTile(
-                      leading: const Icon(Icons.lightbulb_outline),
-                      title: Text(device.name),
-                      subtitle: Text(device.ip),
-                      onTap: () {
-                        ref
-                            .read(deviceGroupsProvider.notifier)
-                            .addDeviceToGroup(group.id, device.id);
-                        Navigator.pop(context);
-                      },
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          ref
+                              .read(deviceGroupsProvider.notifier)
+                              .addDeviceToGroup(group.id, device.id);
+                          Navigator.pop(context);
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: FluxTheme.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.light_rounded,
+                                  color: FluxTheme.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      device.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      device.ip,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? Colors.white38
+                                            : Colors.black38,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.add_circle_outline_rounded,
+                                color: FluxTheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     );
                   },
                 ),
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -402,26 +970,40 @@ class _ControlButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Color color;
 
   const _ControlButton({
     required this.icon,
     required this.label,
     required this.onTap,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(
-          children: [
-            Icon(icon, color: FluxTheme.textPrimary),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 12)),
-          ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color.withValues(alpha: 0.9), size: 22),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

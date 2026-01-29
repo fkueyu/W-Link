@@ -105,6 +105,29 @@ class WledLedInfo {
   @JsonKey(fromJson: _boolFromJson)
   final bool cct;
 
+  /// 矩阵配置 (如果有)
+  final WledMatrixInfo? matrix;
+
+  /// 当前帧率
+  @JsonKey(defaultValue: 0)
+  final int fps;
+
+  /// 启动预设 ID
+  @JsonKey(defaultValue: 0)
+  final int bootps;
+
+  /// 并行输出数量
+  @JsonKey(defaultValue: 1)
+  final int lc;
+
+  /// 白平衡版本
+  @JsonKey(defaultValue: 0)
+  final int wv;
+
+  /// 各分段 LED 计数
+  @JsonKey(defaultValue: [])
+  final List<int> seglc;
+
   const WledLedInfo({
     this.count = 0,
     this.rgbw = false,
@@ -112,6 +135,12 @@ class WledLedInfo {
     this.pwr = 0,
     this.maxSeg = 1,
     this.cct = false,
+    this.matrix,
+    this.fps = 0,
+    this.bootps = 0,
+    this.lc = 1,
+    this.wv = 0,
+    this.seglc = const [],
   });
 
   factory WledLedInfo.fromJson(Map<String, dynamic> json) =>
@@ -157,4 +186,23 @@ class WledWifiInfo {
       _$WledWifiInfoFromJson(json);
 
   Map<String, dynamic> toJson() => _$WledWifiInfoToJson(this);
+}
+
+/// 矩阵配置信息
+@JsonSerializable()
+class WledMatrixInfo {
+  /// 宽度
+  @JsonKey(name: 'w')
+  final int width;
+
+  /// 高度
+  @JsonKey(name: 'h')
+  final int height;
+
+  const WledMatrixInfo({this.width = 0, this.height = 0});
+
+  factory WledMatrixInfo.fromJson(Map<String, dynamic> json) =>
+      _$WledMatrixInfoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$WledMatrixInfoToJson(this);
 }

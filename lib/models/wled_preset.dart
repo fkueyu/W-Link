@@ -32,4 +32,24 @@ class WledPreset {
 
   /// 是否是快速加载预设
   bool get isQuickLoad => quickLoad != null && quickLoad! > 0;
+
+  WledPreset copyWith({
+    int? id,
+    String? name,
+    int? quickLoad,
+    bool? on,
+    int? bri,
+    int? transition,
+    int? mainSeg,
+  }) {
+    return WledPreset(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      quickLoad: quickLoad ?? this.quickLoad,
+      on: on ?? this.on,
+      bri: bri ?? this.bri,
+      transition: transition ?? this.transition,
+      mainSeg: mainSeg ?? this.mainSeg,
+    );
+  }
 }

@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
 import '../widgets/widgets.dart';
+import '../widgets/smart_slider.dart';
 
 /// 分段管理页面
 class SegmentsListScreen extends ConsumerStatefulWidget {
@@ -21,608 +22,669 @@ class _SegmentsListScreenState extends ConsumerState<SegmentsListScreen> {
   Widget build(BuildContext context) {
     final stateAsync = ref.watch(deviceStateProvider);
     final api = ref.watch(wledApiProvider);
-    final infoAsync = ref.watch(deviceInfoProvider);
-
-    final segments = stateAsync.valueOrNull?.seg ?? [];
-    final totalLeds = infoAsync.valueOrNull?.leds.count ?? 30;
     final l10n = ref.watch(l10nProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: AnimatedBackground(
         child: SafeArea(
+          bottom: false,
           child: Column(
             children: [
-              // 顶部导航
+              // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Expanded(
-                      child: Text(
-                        l10n.segmentManagement,
-                        style: Theme.of(context).textTheme.titleLarge,
-                        textAlign: TextAlign.center,
+                    BouncyButton(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.chevron_left_rounded, size: 28),
                       ),
                     ),
-                    // 刷新按钮
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: () =>
-                          ref.read(deviceStateProvider.notifier).refresh(),
+                    const SizedBox(width: 16),
+                    Text(
+                      l10n.segments,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                    ),
+                    const Spacer(),
+                    const SizedBox(width: 8),
+                    BouncyButton(
+                      onTap: () => _showAddSegmentDialog(context, api),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: FluxTheme.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          color: FluxTheme.primary,
+                          size: 28,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
 
-              // 信息提示
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: GlassCard(
-                  padding: const EdgeInsets.all(12),
+              // Info Row
+              stateAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (e, st) => const SizedBox.shrink(),
+                data: (state) => Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, size: 20),
+                      _buildMiniInfo(
+                        'LEDs',
+                        '${state.info.leds.count}',
+                        isDark,
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          l10n.totalLedsInfo(totalLeds, segments.length),
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+                      _buildMiniInfo(
+                        l10n.segments,
+                        '${state.seg.length}',
+                        isDark,
                       ),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 16),
-
-              // 分段列表
+              // List
               Expanded(
                 child: stateAsync.when(
                   loading: () => const SkeletonListView(itemHeight: 120),
-                  error: (e, _) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 48,
-                          color: FluxTheme.error,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.loadFailed,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
+                  error: (e, s) => Center(child: Text('Error: $e')),
+                  data: (state) => ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    itemCount: state.seg.length,
+                    itemBuilder: (context, index) {
+                      final segment = state.seg[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child:
+                            _SegmentCard(
+                                  segment: segment,
+                                  index: index,
+                                  api: api!,
+                                  isDark: isDark,
+                                  l10n: l10n,
+                                  onDelete: () =>
+                                      _confirmDelete(context, segment.id, api),
+                                )
+                                .animate()
+                                .fadeIn(delay: (index * 50).ms)
+                                .slideY(begin: 0.1),
+                      );
+                    },
                   ),
-                  data: (state) {
-                    if (state.seg.isEmpty) {
-                      return Center(child: Text(l10n.noSegments));
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      itemCount: state.seg.length,
-                      itemBuilder: (context, index) {
-                        final segment = state.seg[index];
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child:
-                              _SegmentTile(
-                                    segment: segment,
-                                    totalLeds: totalLeds,
-                                    l10n: l10n,
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      _showSegmentEditor(
-                                        context,
-                                        segment,
-                                        api,
-                                        totalLeds,
-                                        l10n,
-                                      );
-                                    },
-                                    onToggle: (on) {
-                                      HapticFeedback.selectionClick();
-                                      ref
-                                          .read(deviceStateProvider.notifier)
-                                          .optimisticUpdate(
-                                            (s) {
-                                              final newSegs = s.seg.map((seg) {
-                                                if (seg.id == segment.id) {
-                                                  return seg.copyWith(on: on);
-                                                }
-                                                return seg;
-                                              }).toList();
-                                              return s.copyWith(seg: newSegs);
-                                            },
-                                            () => api!.setSegmentOn(
-                                              segment.id,
-                                              on,
-                                            ),
-                                          );
-                                    },
-                                  )
-                                  .animate()
-                                  .fadeIn(delay: (index * 50).ms)
-                                  .slideX(begin: 0.05),
-                        );
-                      },
-                    );
-                  },
                 ),
               ),
             ],
           ),
         ),
       ),
-      // FAB: 添加分段
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () =>
-            _showAddSegmentDialog(context, api, segments, totalLeds, l10n),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.addSegment),
-        backgroundColor: FluxTheme.primaryColor,
-      ),
     );
   }
 
-  /// 显示添加分段对话框
-  void _showAddSegmentDialog(
-    BuildContext context,
-    WledApiService? api,
-    List<WledSegment> existingSegments,
-    int totalLeds,
-    AppStrings l10n,
-  ) {
-    int start = 0;
-    int stop = totalLeds;
-
-    // 找到未被占用的 LED 范围
-    if (existingSegments.isNotEmpty) {
-      final lastSeg = existingSegments.last;
-      start = lastSeg.stop;
-      if (start >= totalLeds) {
-        start = 0; // 如果没有空间，从头开始
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(l10n.addSegment),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('${l10n.ledRange} ($totalLeds)'),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: l10n.startLabel,
-                        border: const OutlineInputBorder(),
-                      ),
-                      controller: TextEditingController(text: '$start'),
-                      onChanged: (v) => start = int.tryParse(v) ?? 0,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: l10n.endLabel,
-                        border: const OutlineInputBorder(),
-                      ),
-                      controller: TextEditingController(text: '$stop'),
-                      onChanged: (v) => stop = int.tryParse(v) ?? totalLeds,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await api?.addSegment(start, stop);
-                ref.read(deviceStateProvider.notifier).refresh();
-              },
-              child: Text(l10n.add),
-            ),
-          ],
-        ),
+  Widget _buildMiniInfo(String label, String value, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
       ),
-    );
-  }
-
-  /// 显示分段编辑器
-  void _showSegmentEditor(
-    BuildContext context,
-    WledSegment segment,
-    WledApiService? api,
-    int totalLeds,
-    AppStrings l10n,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _SegmentEditorSheet(
-        segment: segment,
-        totalLeds: totalLeds,
-        api: api,
-        l10n: l10n,
-        onSave: (start, stop) async {
-          await api?.updateSegment(segment.id, start: start, stop: stop);
-          ref.read(deviceStateProvider.notifier).refresh();
-          if (context.mounted) AppToast.success(context, l10n.segmentSaved);
-        },
-        onDelete: () async {
-          await api?.deleteSegment(segment.id);
-          ref.read(deviceStateProvider.notifier).refresh();
-          if (context.mounted) AppToast.success(context, l10n.segmentDeleted);
-        },
-      ),
-    );
-  }
-}
-
-/// 分段列表项
-class _SegmentTile extends StatelessWidget {
-  final WledSegment segment;
-  final int totalLeds;
-  final VoidCallback onTap;
-  final ValueChanged<bool> onToggle;
-  final AppStrings l10n;
-
-  const _SegmentTile({
-    required this.segment,
-    required this.totalLeds,
-    required this.onTap,
-    required this.onToggle,
-    required this.l10n,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Color.fromARGB(
-      255,
-      segment.primaryColor[0],
-      segment.primaryColor[1],
-      segment.primaryColor[2],
-    );
-
-    final rangePercent = (segment.stop - segment.start) / totalLeds;
-    final startPercent = segment.start / totalLeds;
-
-    return GlassCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Header: Name + Switch
-          Row(
-            children: [
-              // Icon & Name
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: FluxTheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.view_column_outlined,
-                  size: 20,
-                  color: FluxTheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${l10n.segment} ${segment.id}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${segment.stop - segment.start} LEDs',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: FluxTheme.textMuted),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              // Edit Hint (Optional)
-              // Icon(Icons.chevron_right, color: FluxTheme.textMuted),
-              // const SizedBox(width: 8),
-              // Switch
-              Transform.scale(
-                scale: 0.9,
-                child: Switch.adaptive(
-                  value: segment.on,
-                  onChanged: onToggle,
-                  activeTrackColor: FluxTheme.primary,
-                ),
-              ),
-            ],
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: isDark ? Colors.white38 : Colors.black38,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-
-          const SizedBox(height: 16),
-
-          // Range Visualizer (Mini-map)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${l10n.coverageRange} (${segment.start} - ${segment.stop})',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: FluxTheme.textMuted,
-                      fontSize: 11,
-                    ),
-                  ),
-                  Text(
-                    '${(rangePercent * 100).toStringAsFixed(1)}%',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: FluxTheme.textMuted,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Stack(
-                      children: [
-                        // Active Range
-                        Positioned(
-                          left: constraints.maxWidth * startPercent,
-                          width: constraints.maxWidth * rangePercent,
-                          top: 0,
-                          bottom: 0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: segment.on
-                                  ? color
-                                  : FluxTheme.textMuted.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(6),
-                              boxShadow: segment.on
-                                  ? [
-                                      BoxShadow(
-                                        color: color.withValues(alpha: 0.4),
-                                        blurRadius: 6,
-                                        spreadRadius: 1,
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                          ),
-                        ),
-                        // Markers for Start/Stop (Optional ticks)
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
           ),
         ],
       ),
     );
   }
+
+  void _showAddSegmentDialog(BuildContext context, WledApiService? api) {
+    final state = ref.read(deviceStateProvider).valueOrNull;
+    if (api == null || state == null) return;
+
+    final totalLeds = state.info.leds.count;
+    if (totalLeds == 0) return;
+
+    // 找到当前最大的 stop 值作为新分段的起点
+    // 同时也确定下一个分段的 ID
+    int lastStop = 0;
+    int maxId = -1;
+    for (final seg in state.seg) {
+      if (seg.stop > lastStop) lastStop = seg.stop;
+      if (seg.id > maxId) maxId = seg.id;
+    }
+
+    if (lastStop >= totalLeds) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已达到 LED 总数上限')));
+      return;
+    }
+
+    final nextId = maxId + 1;
+
+    // 添加一个覆盖剩余部分的新分段，明确指出 ID
+    ref
+        .read(deviceStateProvider.notifier)
+        .optimisticUpdate(
+          (s) => s.copyWith(
+            seg: [
+              ...s.seg,
+              WledSegment(
+                id: nextId,
+                start: lastStop,
+                stop: totalLeds,
+                on: true,
+                col: [
+                  [255, 160, 0],
+                ],
+              ),
+            ],
+          ),
+          () => api.setSegmentState(
+            nextId,
+            start: lastStop,
+            stop: totalLeds,
+            on: true,
+          ),
+        );
+  }
+
+  void _confirmDelete(BuildContext context, int segmentId, WledApiService api) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) =>
+          Center(
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Container(
+                    margin: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.orangeAccent,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          '删除分段？',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '确定要删除分段 #$segmentId 吗？',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text(
+                                  '取消',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  api.deleteSegment(segmentId);
+                                  ref
+                                      .read(deviceStateProvider.notifier)
+                                      .refresh();
+                                },
+                                child: const Text('删除'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .animate()
+              .scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOutBack)
+              .fadeIn(),
+    );
+  }
 }
 
-/// 分段编辑器底部弹窗
-class _SegmentEditorSheet extends StatefulWidget {
+class _SegmentCard extends ConsumerWidget {
   final WledSegment segment;
-  final int totalLeds;
-  final Future<void> Function(int start, int stop) onSave;
-  final Future<void> Function() onDelete;
-  final WledApiService? api;
+  final int index;
+  final WledApiService api;
+  final bool isDark;
   final AppStrings l10n;
+  final VoidCallback onDelete;
 
-  const _SegmentEditorSheet({
+  const _SegmentCard({
     required this.segment,
-    required this.totalLeds,
-    required this.onSave,
-    required this.onDelete,
+    required this.index,
     required this.api,
+    required this.isDark,
     required this.l10n,
+    required this.onDelete,
   });
 
   @override
-  State<_SegmentEditorSheet> createState() => _SegmentEditorSheetState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(deviceStateProvider).valueOrNull;
+    if (state == null) return const SizedBox();
+    final color = segment.col.isNotEmpty && segment.col.first.length >= 3
+        ? Color.fromARGB(
+            255,
+            segment.col.first[0],
+            segment.col.first[1],
+            segment.col.first[2],
+          )
+        : FluxTheme.primary;
 
-class _SegmentEditorSheetState extends State<_SegmentEditorSheet> {
-  late RangeValues _range;
-  late bool _mirror;
-  late bool _reverse;
-
-  @override
-  void initState() {
-    super.initState();
-    _range = RangeValues(
-      widget.segment.start.toDouble(),
-      widget.segment.stop.toDouble(),
-    );
-    _mirror = widget.segment.mi;
-    _reverse = widget.segment.rev;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return GlassCard(
+      padding: EdgeInsets.zero,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
+          // Row 1: Header
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(
-              '${widget.l10n.editSegment} ${widget.segment.id}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            child: Row(
               children: [
-                Text(
-                  '${widget.l10n.ledRange}: ${_range.start.round()} - ${_range.end.round()}',
-                ),
-                const SizedBox(height: 8),
-                RangeSlider(
-                  values: _range,
-                  min: 0,
-                  max: widget.totalLeds.toDouble(),
-                  divisions: widget.totalLeds,
-                  labels: RangeLabels(
-                    '${_range.start.round()}',
-                    '${_range.end.round()}',
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: segment.on
+                        ? color.withValues(alpha: 0.15)
+                        : (isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.03)),
+                    shape: BoxShape.circle,
                   ),
-                  onChanged: (values) {
-                    setState(() => _range = values);
+                  child: Center(
+                    child: Text(
+                      '$index',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: segment.on ? color : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    segment.n.isEmpty ? '${l10n.segment} $index' : segment.n,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 17,
+                    ),
+                  ),
+                ),
+                Switch.adaptive(
+                  value: segment.on,
+                  activeTrackColor: color,
+                  onChanged: (val) {
                     HapticFeedback.selectionClick();
+                    ref
+                        .read(deviceStateProvider.notifier)
+                        .optimisticUpdate(
+                          (s) => s.copyWith(
+                            seg: s.seg
+                                .map(
+                                  (seg) => seg.id == segment.id
+                                      ? seg.copyWith(on: val)
+                                      : seg,
+                                )
+                                .toList(),
+                          ),
+                          () => api.setSegmentState(segment.id, on: val),
+                        );
                   },
                 ),
-                const SizedBox(height: 16),
-                // Mirror/Reverse 开关
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildOptionTile(
-                        icon: Icons.flip,
-                        label: widget.l10n.mirror,
-                        value: _mirror,
-                        onChanged: (v) {
-                          setState(() => _mirror = v);
-                          HapticFeedback.selectionClick();
-                          widget.api?.setSegmentMirror(widget.segment.id, v);
-                        },
-                      ),
+                BouncyButton(
+                  onTap: onDelete,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.grey,
+                      size: 20,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildOptionTile(
-                        icon: Icons.swap_horiz,
-                        label: widget.l10n.reverse,
-                        value: _reverse,
-                        onChanged: (v) {
-                          setState(() => _reverse = v);
-                          HapticFeedback.selectionClick();
-                          widget.api?.setSegmentReverse(widget.segment.id, v);
-                        },
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _confirmDelete();
-                  },
-                  child: Text(
-                    widget.l10n.delete,
-                    style: const TextStyle(color: FluxTheme.error),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onSave(_range.start.round(), _range.end.round());
-                  },
-                  child: Text(widget.l10n.save),
-                ),
-              ),
-            ],
+
+          Divider(
+            height: 1,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.03),
           ),
-          const SizedBox(height: 16),
+
+          // Row 2: Range & Grouping
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildRangeRow(context, ref, state, l10n),
+                const SizedBox(height: 20),
+                _buildSlider(
+                  l10n.grouping,
+                  segment.grp.toDouble(),
+                  1,
+                  255,
+                  (v) => ref
+                      .read(deviceStateProvider.notifier)
+                      .optimisticUpdate(
+                        (s) => s.copyWith(
+                          seg: s.seg
+                              .map(
+                                (seg) => seg.id == segment.id
+                                    ? seg.copyWith(grp: v.round())
+                                    : seg,
+                              )
+                              .toList(),
+                        ),
+                        () => api.setSegmentState(segment.id, grp: v.round()),
+                      ),
+                ),
+                const SizedBox(height: 16),
+                _buildSlider(
+                  l10n.spacing,
+                  segment.spc.toDouble(),
+                  0,
+                  255,
+                  (v) => ref
+                      .read(deviceStateProvider.notifier)
+                      .optimisticUpdate(
+                        (s) => s.copyWith(
+                          seg: s.seg
+                              .map(
+                                (seg) => seg.id == segment.id
+                                    ? seg.copyWith(spc: v.round())
+                                    : seg,
+                              )
+                              .toList(),
+                        ),
+                        () => api.setSegmentState(segment.id, spc: v.round()),
+                      ),
+                  isLast: true,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildOptionTile({
-    required IconData icon,
-    required String label,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return GestureDetector(
-      onTap: () => onChanged(!value),
+  Widget _buildRangeRow(
+    BuildContext context,
+    WidgetRef ref,
+    WledState state,
+    AppStrings l10n,
+  ) {
+    // 检查是否为 2D 模式 (通过 info 中的矩阵配置判断)
+    final is2D = state.info.leds.matrix != null;
+
+    if (!is2D) {
+      return Row(
+        children: [
+          Expanded(
+            child: _buildRangeInput(
+              context,
+              l10n.start,
+              segment.start,
+              state.info.leds.count,
+              (v) => ref
+                  .read(deviceStateProvider.notifier)
+                  .optimisticUpdate(
+                    (s) => s.copyWith(
+                      seg: s.seg
+                          .map(
+                            (seg) => seg.id == segment.id
+                                ? seg.copyWith(start: v)
+                                : seg,
+                          )
+                          .toList(),
+                    ),
+                    () => api.setSegmentState(segment.id, start: v),
+                  ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Icon(Icons.arrow_forward_rounded, color: Colors.grey, size: 16),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildRangeInput(
+              context,
+              l10n.stop,
+              segment.stop,
+              state.info.leds.count,
+              (v) => ref
+                  .read(deviceStateProvider.notifier)
+                  .optimisticUpdate(
+                    (s) => s.copyWith(
+                      seg: s.seg
+                          .map(
+                            (seg) => seg.id == segment.id
+                                ? seg.copyWith(stop: v)
+                                : seg,
+                          )
+                          .toList(),
+                    ),
+                    () => api.setSegmentState(segment.id, stop: v),
+                  ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      // 2D 矩阵布局
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildRangeInput(
+                  context,
+                  'Start X',
+                  segment.start,
+                  state.info.leds.matrix?.width ?? 255,
+                  (v) => ref
+                      .read(deviceStateProvider.notifier)
+                      .optimisticUpdate(
+                        (s) => s.copyWith(
+                          seg: s.seg
+                              .map(
+                                (seg) => seg.id == segment.id
+                                    ? seg.copyWith(start: v)
+                                    : seg,
+                              )
+                              .toList(),
+                        ),
+                        () => api.setSegmentState(segment.id, start: v),
+                      ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.grey,
+                size: 16,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildRangeInput(
+                  context,
+                  'Stop X',
+                  segment.stop,
+                  state.info.leds.matrix?.width ?? 255,
+                  (v) => ref
+                      .read(deviceStateProvider.notifier)
+                      .optimisticUpdate(
+                        (s) => s.copyWith(
+                          seg: s.seg
+                              .map(
+                                (seg) => seg.id == segment.id
+                                    ? seg.copyWith(stop: v)
+                                    : seg,
+                              )
+                              .toList(),
+                        ),
+                        () => api.setSegmentState(segment.id, stop: v),
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildRangeInput(
+                  context,
+                  'Start Y',
+                  segment.startY,
+                  state.info.leds.matrix?.height ?? 255,
+                  (v) => ref
+                      .read(deviceStateProvider.notifier)
+                      .optimisticUpdate(
+                        (s) => s.copyWith(
+                          seg: s.seg
+                              .map(
+                                (seg) => seg.id == segment.id
+                                    ? seg.copyWith(startY: v)
+                                    : seg,
+                              )
+                              .toList(),
+                        ),
+                        () => api.setSegmentState(segment.id, startY: v),
+                      ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.grey,
+                size: 16,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildRangeInput(
+                  context,
+                  'Stop Y',
+                  segment.stopY,
+                  state.info.leds.matrix?.height ?? 255,
+                  (v) => ref
+                      .read(deviceStateProvider.notifier)
+                      .optimisticUpdate(
+                        (s) => s.copyWith(
+                          seg: s.seg
+                              .map(
+                                (seg) => seg.id == segment.id
+                                    ? seg.copyWith(stopY: v)
+                                    : seg,
+                              )
+                              .toList(),
+                        ),
+                        () => api.setSegmentState(segment.id, stopY: v),
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildRangeInput(
+    BuildContext context,
+    String label,
+    int value,
+    int maxLeds,
+    ValueChanged<int> onChanged,
+  ) {
+    return BouncyButton(
+      onTap: () => _editValue(context, label, value, maxLeds, onChanged),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: value
-              ? FluxTheme.primary.withValues(alpha: 0.2)
-              : FluxTheme.textMuted.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: value ? FluxTheme.primary : Colors.transparent,
-            width: 1.5,
-          ),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(
-              icon,
-              size: 18,
-              color: value ? FluxTheme.primary : FluxTheme.textMuted,
-            ),
-            const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: value ? FluxTheme.primary : FluxTheme.textMuted,
-                fontWeight: value ? FontWeight.w600 : FontWeight.normal,
+                color: isDark ? Colors.white38 : Colors.black38,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
               ),
+            ),
+            Text(
+              '$value',
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
             ),
           ],
         ),
@@ -630,27 +692,63 @@ class _SegmentEditorSheetState extends State<_SegmentEditorSheet> {
     );
   }
 
-  void _confirmDelete() {
+  void _editValue(
+    BuildContext context,
+    String label,
+    int currentValue,
+    int maxLeds,
+    ValueChanged<int> onChanged,
+  ) {
+    final controller = TextEditingController(text: currentValue.toString());
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(widget.l10n.deleteSegmentTitle),
-        content: Text(widget.l10n.deleteSegmentConfirm),
+      builder: (ctx) => AlertDialog(
+        title: Text('修改$label'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: '范围: 0 - $maxLeds',
+            suffixText: 'LED',
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(widget.l10n.cancel),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: FluxTheme.error),
             onPressed: () {
-              Navigator.pop(context);
-              widget.onDelete();
+              final newValue = int.tryParse(controller.text);
+              if (newValue != null && newValue >= 0 && newValue <= maxLeds) {
+                onChanged(newValue);
+                Navigator.pop(ctx);
+              }
             },
-            child: Text(widget.l10n.delete),
+            child: const Text('确认'),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSlider(
+    String label,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChangeEnd, {
+    bool isLast = false,
+  }) {
+    return SmartSlider(
+      label: label,
+      value: value,
+      min: min,
+      max: max,
+      activeColor: segment.on ? FluxTheme.primary : Colors.grey,
+      onChangeEnd: onChangeEnd,
     );
   }
 }

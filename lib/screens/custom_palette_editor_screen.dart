@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,9 +37,9 @@ class CustomPaletteEditorScreen extends ConsumerStatefulWidget {
 class _CustomPaletteEditorScreenState
     extends ConsumerState<CustomPaletteEditorScreen> {
   final List<ColorStop> _colorStops = [
-    ColorStop(position: 0, color: Colors.red),
-    ColorStop(position: 128, color: Colors.green),
-    ColorStop(position: 255, color: Colors.blue),
+    ColorStop(position: 0, color: Colors.blue),
+    ColorStop(position: 128, color: Colors.purple),
+    ColorStop(position: 255, color: Colors.indigo),
   ];
 
   int _selectedSlot = 0;
@@ -48,48 +49,42 @@ class _CustomPaletteEditorScreenState
   Widget build(BuildContext context) {
     final l10n = ref.watch(l10nProvider);
     final currentDevice = ref.watch(currentDeviceProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: AnimatedBackground(
         child: SafeArea(
           child: Column(
             children: [
-              // 顶部导航
+              // Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Expanded(
-                      child: Text(
-                        l10n.customPalette,
-                        style: Theme.of(context).textTheme.titleLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    // 槽位选择
-                    PopupMenuButton<int>(
-                      icon: const Icon(Icons.save_alt),
-                      tooltip: l10n.paletteSlot,
-                      onSelected: (val) => setState(() => _selectedSlot = val),
-                      itemBuilder: (context) => List.generate(
-                        10,
-                        (i) => PopupMenuItem(
-                          value: i,
-                          child: Row(
-                            children: [
-                              if (i == _selectedSlot)
-                                const Icon(Icons.check, size: 18),
-                              if (i == _selectedSlot) const SizedBox(width: 8),
-                              Text('${l10n.paletteSlot} $i'),
-                            ],
-                          ),
+                    BouncyButton(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.05),
+                          shape: BoxShape.circle,
                         ),
+                        child: const Icon(Icons.chevron_left_rounded, size: 28),
                       ),
                     ),
+                    const SizedBox(width: 16),
+                    Text(
+                      l10n.customPalette,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                    ),
+                    const Spacer(),
+                    _buildSlotPicker(isDark, l10n),
                   ],
                 ),
               ),
@@ -98,142 +93,175 @@ class _CustomPaletteEditorScreenState
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // 渐变预览
-                    _buildSectionTitle(context, l10n.previewPalette),
+                    _buildSectionTitle(l10n.previewPalette, isDark),
+                    const SizedBox(height: 12),
                     GlassCard(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
                           Container(
-                            height: 60,
+                            height: 80,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(20),
                               gradient: _buildGradient(),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 20,
+                                  spreadRadius: -5,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           Text(
                             '${l10n.paletteSlot} $_selectedSlot',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: FluxTheme.textMuted),
+                            style: TextStyle(
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
-                    ).animate().fadeIn().slideY(begin: 0.1),
+                    ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
-                    // 色标列表
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildSectionTitle(
-                          context,
                           '${l10n.color} (${_colorStops.length})',
+                          isDark,
                         ),
-                        TextButton.icon(
-                          onPressed: _addColorStop,
-                          icon: const Icon(Icons.add, size: 18),
-                          label: Text(l10n.addColorStop),
+                        BouncyButton(
+                          onTap: _addColorStop,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: FluxTheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.add_rounded,
+                                  color: FluxTheme.primary,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  l10n.addColorStop,
+                                  style: const TextStyle(
+                                    color: FluxTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
 
                     if (_colorStops.isEmpty)
-                      GlassCard(
-                        padding: const EdgeInsets.all(32),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.palette_outlined,
-                                size: 48,
-                                color: FluxTheme.textMuted,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                l10n.noColorStops,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                l10n.minColorStopsMsg,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: FluxTheme.textMuted),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
+                      _buildEmptyState(isDark, l10n)
                     else
                       ...List.generate(_colorStops.length, (index) {
                         final stop = _colorStops[index];
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: GlassCard(
-                            child: Row(
-                              children: [
-                                // 颜色预览
-                                GestureDetector(
-                                  onTap: () => _pickColor(index),
-                                  child: Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: stop.color,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.white24,
-                                        width: 2,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                // 位置滑块
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${l10n.colorPosition}: ${stop.position}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              color: FluxTheme.textMuted,
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child:
+                              GlassCard(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        BouncyButton(
+                                          onTap: () => _pickColor(index),
+                                          child: Container(
+                                            width: 56,
+                                            height: 56,
+                                            decoration: BoxDecoration(
+                                              color: stop.color,
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.2,
+                                                ),
+                                                width: 2,
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: stop.color.withValues(
+                                                    alpha: 0.3,
+                                                  ),
+                                                  blurRadius: 10,
+                                                  spreadRadius: -2,
+                                                ),
+                                              ],
                                             ),
-                                      ),
-                                      Slider(
-                                        value: stop.position.toDouble(),
-                                        min: 0,
-                                        max: 255,
-                                        divisions: 255,
-                                        onChanged: (val) {
-                                          setState(() {
-                                            stop.position = val.round();
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // 删除按钮
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.remove_circle_outline,
-                                    color: FluxTheme.error,
-                                  ),
-                                  onPressed: () => _removeColorStop(index),
-                                ),
-                              ],
-                            ),
-                          ).animate().fadeIn(delay: (index * 50).ms),
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.colorize_rounded,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${l10n.colorPosition}: ${stop.position}',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              Slider(
+                                                value: stop.position.toDouble(),
+                                                min: 0,
+                                                max: 255,
+                                                activeColor: stop.color,
+                                                onChanged: (val) => setState(
+                                                  () => stop.position = val
+                                                      .round(),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        BouncyButton(
+                                          onTap: () => _removeColorStop(index),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            child: const Icon(
+                                              Icons.delete_outline_rounded,
+                                              color: Colors.redAccent,
+                                              size: 24,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                  .animate()
+                                  .fadeIn(delay: (index * 50).ms)
+                                  .slideX(begin: 0.05),
                         );
                       }),
-
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
@@ -241,35 +269,170 @@ class _CustomPaletteEditorScreenState
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isUploading || _colorStops.length < 2
-            ? null
-            : () => _uploadPalette(currentDevice?.ip),
-        icon: _isUploading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton:
+          BouncyButton(
+                onTap: _isUploading || _colorStops.length < 2
+                    ? null
+                    : () => _uploadPalette(currentDevice?.ip),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _colorStops.length < 2
+                            ? Colors.grey.withValues(alpha: 0.2)
+                            : FluxTheme.primary.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          if (_colorStops.length >= 2)
+                            BoxShadow(
+                              color: FluxTheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                        ],
+                      ),
+                      child: _isUploading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.cloud_upload_rounded,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  l10n.uploadPalette,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
               )
-            : const Icon(Icons.cloud_upload),
-        label: Text(l10n.uploadPalette),
-        backgroundColor: _colorStops.length < 2
-            ? FluxTheme.textMuted
-            : FluxTheme.primaryColor,
+              .animate()
+              .fadeIn(delay: 600.ms)
+              .slideY(begin: 0.5, curve: Curves.easeOutBack),
+    );
+  }
+
+  Widget _buildSlotPicker(bool isDark, AppStrings l10n) {
+    return PopupMenuButton<int>(
+      onSelected: (val) => setState(() => _selectedSlot = val),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+      itemBuilder: (context) => List.generate(
+        10,
+        (i) => PopupMenuItem(
+          value: i,
+          child: Row(
+            children: [
+              Icon(
+                i == _selectedSlot
+                    ? Icons.check_circle_rounded
+                    : Icons.circle_outlined,
+                color: i == _selectedSlot ? FluxTheme.primary : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${l10n.paletteSlot} $i',
+                style: TextStyle(
+                  fontWeight: i == _selectedSlot
+                      ? FontWeight.w900
+                      : FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: FluxTheme.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.storage_rounded,
+              color: FluxTheme.primary,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '#$_selectedSlot',
+              style: const TextStyle(
+                color: FluxTheme.primary,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title) {
+  Widget _buildSectionTitle(String title, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 8),
+      padding: const EdgeInsets.only(left: 8),
       child: Text(
         title.toUpperCase(),
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          color: isDark ? Colors.white38 : Colors.black38,
           letterSpacing: 1.2,
-          fontWeight: FontWeight.bold,
-          color: FluxTheme.primary,
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark, AppStrings l10n) {
+    return GlassCard(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        children: [
+          Icon(
+            Icons.palette_outlined,
+            size: 64,
+            color: isDark
+                ? Colors.white10
+                : Colors.black.withValues(alpha: 0.05),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            l10n.noColorStops,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.minColorStopsMsg,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+        ],
       ),
     );
   }
@@ -278,11 +441,8 @@ class _CustomPaletteEditorScreenState
     if (_colorStops.isEmpty) {
       return const LinearGradient(colors: [Colors.grey, Colors.grey]);
     }
-
-    // 按位置排序
     final sorted = List<ColorStop>.from(_colorStops)
       ..sort((a, b) => a.position.compareTo(b.position));
-
     return LinearGradient(
       colors: sorted.map((s) => s.color).toList(),
       stops: sorted.map((s) => s.position / 255).toList(),
@@ -291,81 +451,117 @@ class _CustomPaletteEditorScreenState
 
   void _addColorStop() {
     HapticFeedback.selectionClick();
-    setState(() {
-      _colorStops.add(
+    setState(
+      () => _colorStops.add(
         ColorStop(
           position: 128,
           color: Colors.primaries[_colorStops.length % Colors.primaries.length],
         ),
-      );
-    });
+      ),
+    );
   }
 
   void _removeColorStop(int index) {
     HapticFeedback.mediumImpact();
-    setState(() {
-      _colorStops.removeAt(index);
-    });
+    setState(() => _colorStops.removeAt(index));
   }
 
   Future<void> _pickColor(int index) async {
     final stop = _colorStops[index];
     final l10n = ref.read(l10nProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final result = await showDialog<Color>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.color),
-        content: SingleChildScrollView(
-          child: ColorPicker(
-            color: stop.color,
-            onColorChanged: (color) {},
-            pickersEnabled: const {
-              ColorPickerType.wheel: true,
-              ColorPickerType.accent: false,
-              ColorPickerType.primary: false,
-            },
-            enableShadesSelection: false,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, stop.color),
-            child: Text(l10n.ok),
-          ),
-        ],
-      ),
+      builder: (context) =>
+          Center(
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Container(
+                    margin: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          '选择颜色',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ColorPicker(
+                          color: stop.color,
+                          onColorChanged: (color) =>
+                              setState(() => stop.color = color),
+                          pickersEnabled: const {
+                            ColorPickerType.wheel: true,
+                            ColorPickerType.accent: false,
+                            ColorPickerType.primary: false,
+                          },
+                          enableShadesSelection: false,
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(
+                                  l10n.cancel,
+                                  style: const TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: FluxTheme.primary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    Navigator.pop(context, stop.color),
+                                child: Text(l10n.ok),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .animate()
+              .scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOutBack)
+              .fadeIn(),
     );
 
     if (result != null) {
-      setState(() {
-        _colorStops[index].color = result;
-      });
+      setState(() => _colorStops[index].color = result);
     }
   }
 
   Future<void> _uploadPalette(String? deviceIp) async {
-    if (deviceIp == null || _colorStops.length < 2) return;
-
+    if (deviceIp == null || _colorStops.length < 2) {
+      return;
+    }
     final l10n = ref.read(l10nProvider);
-
     setState(() => _isUploading = true);
-
     try {
-      // 按位置排序并生成 JSON 数组
       final sorted = List<ColorStop>.from(_colorStops)
         ..sort((a, b) => a.position.compareTo(b.position));
-
       final paletteData = <int>[];
       for (final stop in sorted) {
         paletteData.addAll(stop.toList());
       }
-
-      // 上传到 WLED 文件系统
       final uri = Uri.parse('http://$deviceIp/upload');
       final request = http.MultipartRequest('POST', uri)
         ..files.add(
@@ -375,35 +571,20 @@ class _CustomPaletteEditorScreenState
             filename: '/palette$_selectedSlot.json',
           ),
         );
-
       final response = await request.send().timeout(
         const Duration(seconds: 10),
       );
-
       if (mounted) {
         if (response.statusCode == 200) {
           AppToast.success(context, l10n.uploadSuccess);
-          // 提示需要刷新
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '${l10n.uploadSuccess}. Refresh palette list to see changes.',
-              ),
-              action: SnackBarAction(label: l10n.ok, onPressed: () {}),
-            ),
-          );
         } else {
           AppToast.error(context, l10n.uploadFailed);
         }
       }
     } catch (e) {
-      if (mounted) {
-        AppToast.error(context, '${l10n.uploadFailed}: $e');
-      }
+      if (mounted) AppToast.error(context, '${l10n.uploadFailed}: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isUploading = false);
-      }
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 }

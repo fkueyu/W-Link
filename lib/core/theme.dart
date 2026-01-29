@@ -9,10 +9,10 @@ class FluxTheme {
   // 核心色板 (Core Palette)
   // ===========================================================================
 
-  // 品牌色 - 活力的靛紫
-  static const Color primary = Color(0xFF6366F1);
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryDark = Color(0xFF4338CA);
+  // 品牌色 - AINX 品牌绿
+  static const Color primary = Color(0xFFAF47FF);
+  static const Color primaryLight = Color(0xFFC47DFF);
+  static const Color primaryDark = Color(0xFF8A2BE2);
 
   // 辅助色
   static const Color secondary = Color(0xFFEC4899); // Pink

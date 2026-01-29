@@ -24,6 +24,8 @@ WledState _$WledStateFromJson(Map<String, dynamic> json) => WledState(
   udpn: json['udpn'] == null
       ? const WledUdpSync()
       : WledUdpSync.fromJson(json['udpn'] as Map<String, dynamic>),
+  ledmap: (json['ledmap'] as num?)?.toInt() ?? 0,
+  lor: (json['lor'] as num?)?.toInt() ?? 0,
 );
 
 Map<String, dynamic> _$WledStateToJson(WledState instance) => <String, dynamic>{
@@ -36,6 +38,8 @@ Map<String, dynamic> _$WledStateToJson(WledState instance) => <String, dynamic>{
   'mainseg': instance.mainSeg,
   'nl': instance.nl,
   'udpn': instance.udpn,
+  'ledmap': instance.ledmap,
+  'lor': instance.lor,
 };
 
 WledNightlight _$WledNightlightFromJson(Map<String, dynamic> json) =>
@@ -59,7 +63,14 @@ Map<String, dynamic> _$WledNightlightToJson(WledNightlight instance) =>
 WledUdpSync _$WledUdpSyncFromJson(Map<String, dynamic> json) => WledUdpSync(
   send: json['send'] as bool? ?? false,
   receive: json['recv'] as bool? ?? true,
+  sgrp: (json['sgrp'] as num?)?.toInt() ?? 1,
+  rgrp: (json['rgrp'] as num?)?.toInt() ?? 1,
 );
 
 Map<String, dynamic> _$WledUdpSyncToJson(WledUdpSync instance) =>
-    <String, dynamic>{'send': instance.send, 'recv': instance.receive};
+    <String, dynamic>{
+      'send': instance.send,
+      'recv': instance.receive,
+      'sgrp': instance.sgrp,
+      'rgrp': instance.rgrp,
+    };

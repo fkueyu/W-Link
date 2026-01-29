@@ -168,6 +168,10 @@ abstract class AppStrings {
   String get segmentDeleted;
   String get rebooting;
   String totalLedsInfo(int leds, int segments);
+  String get grouping;
+  String get spacing;
+  String get start;
+  String get stop;
 }
 
 /// 中文实现
@@ -488,6 +492,14 @@ class ZhStrings implements AppStrings {
   @override
   String totalLedsInfo(int leds, int segments) =>
       '共 $leds 个 LED · $segments 个分段';
+  @override
+  String get grouping => '分组';
+  @override
+  String get spacing => '间距';
+  @override
+  String get start => '起止点';
+  @override
+  String get stop => '结束点';
 }
 
 /// 英文实现
@@ -809,7 +821,15 @@ class EnStrings implements AppStrings {
   String get rebooting => 'Rebooting device...';
   @override
   String totalLedsInfo(int leds, int segments) =>
-      '$leds LEDs · $segments segment${segments != 1 ? 's' : ''}';
+      'Total $leds LEDs · $segments Segments';
+  @override
+  String get grouping => 'Grouping';
+  @override
+  String get spacing => 'Spacing';
+  @override
+  String get start => 'Start';
+  @override
+  String get stop => 'Stop';
 }
 
 /// 语言包 Provider

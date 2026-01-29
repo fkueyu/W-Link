@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -46,34 +47,132 @@ class DeviceListScreen extends ConsumerWidget {
               // 顶部标题
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.fromLTRB(24, 12, 16, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.asset(
-                              Theme.of(context).brightness == Brightness.dark
-                                  ? 'assets/icons/icon_dark.png'
-                                  : 'assets/icons/icon_light.png',
-                              width: 48,
-                              height: 48,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                BouncyButton(
+                                  onTap:
+                                      () {}, // Could show app info or easter egg
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? Colors.black.withValues(
+                                                  alpha: 0.3,
+                                                )
+                                              : FluxTheme.primary.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Image.asset(
+                                        Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? 'assets/icons/icon_dark.png'
+                                            : 'assets/icons/icon_light.png',
+                                        width: 44,
+                                        height: 44,
+                                      ),
+                                    ),
+                                  ),
+                                ).animate().scale(
+                                  duration: 600.ms,
+                                  curve: Curves.easeOutBack,
+                                ),
+                                const SizedBox(width: 14),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l10n.appTitle,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -0.5,
+                                          ),
+                                    ),
+                                    Text(
+                                      l10n.controllers,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.white38
+                                            : Colors.black38,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ).animate().scale(
-                            duration: 400.ms,
-                            curve: Curves.easeOut,
                           ),
-                          const SizedBox(width: 16),
-                          Text(
-                            l10n.appTitle,
-                            style: Theme.of(context).textTheme.headlineMedium,
+
+                          // Action buttons
+                          BouncyButton(
+                            onTap: () => _navigateToDiscovery(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.black.withValues(alpha: 0.04),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.search_rounded,
+                                size: 22,
+                                color: FluxTheme.primary,
+                              ),
+                            ),
                           ),
-                          const Spacer(),
-                          // 更多菜单
+                          const SizedBox(width: 8),
                           PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert),
+                            padding: EdgeInsets.zero,
+                            icon: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.black.withValues(alpha: 0.04),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.more_horiz_rounded,
+                                size: 22,
+                              ),
+                            ),
+                            offset: const Offset(0, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            elevation: 12,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF2C2C2E)
+                                : Colors.white.withValues(alpha: 0.98),
                             onSelected: (value) {
                               if (value == 'groups') {
                                 Navigator.push(
@@ -97,9 +196,28 @@ class DeviceListScreen extends ConsumerWidget {
                                 value: 'groups',
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.grid_view, size: 20),
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: FluxTheme.primary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.layers_rounded,
+                                        size: 18,
+                                        color: FluxTheme.primary,
+                                      ),
+                                    ),
                                     const SizedBox(width: 12),
-                                    Text(l10n.deviceGroups),
+                                    Text(
+                                      l10n.deviceGroups,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -107,9 +225,28 @@ class DeviceListScreen extends ConsumerWidget {
                                 value: 'settings',
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.settings, size: 20),
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.settings_rounded,
+                                        size: 18,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
                                     const SizedBox(width: 12),
-                                    Text(l10n.settings),
+                                    Text(
+                                      l10n.settings,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -117,23 +254,21 @@ class DeviceListScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.controllers,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
                     ],
                   ),
                 ),
               ),
 
-              // 我的设备标题
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Text(
                     l10n.myDevices,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                      fontSize: 22,
+                    ),
                   ),
                 ),
               ),
@@ -144,24 +279,12 @@ class DeviceListScreen extends ConsumerWidget {
               if (devices.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.lightbulb_outline,
-                          size: 64,
-                          color: FluxTheme.textMuted.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.noDevices,
-                          style: TextStyle(
-                            color: FluxTheme.textMuted.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: EmptyState(
+                    icon: Icons.lightbulb_outline,
+                    title: l10n.noDevices,
+                    message: "点击下方按钮或右下角添加您的第一个 WLED 设备",
+                    onAction: () => _navigateToDiscovery(context),
+                    actionLabel: l10n.addDevice,
                   ),
                 )
               else
@@ -193,13 +316,65 @@ class DeviceListScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _navigateToDiscovery(context),
-        label: Text(l10n.addDevice),
-        icon: const Icon(Icons.add),
-        backgroundColor: FluxTheme.primary,
-        foregroundColor: Colors.white,
-      ).animate().fadeIn(delay: 500.ms).scale(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton:
+          BouncyButton(
+                onTap: () => _navigateToDiscovery(context),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(32),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.white.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.white.withValues(alpha: 0.8),
+                          width: 0.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.add_rounded,
+                            color: FluxTheme.primary,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            l10n.addDevice,
+                            style: const TextStyle(
+                              color: FluxTheme.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .animate()
+              .fadeIn(delay: 600.ms)
+              .slideY(begin: 0.5, curve: Curves.easeOutBack, duration: 800.ms),
     );
   }
 }

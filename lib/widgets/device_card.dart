@@ -1,14 +1,16 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../core/core.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
-import 'glass_card.dart';
+import 'widgets.dart';
 
-/// 设备卡片组件 - 支持滑动删除
-class DeviceCard extends ConsumerWidget {
+/// 设备卡片组件 - 玻璃态 + 动态光效
+class DeviceCard extends ConsumerStatefulWidget {
   final WledDevice device;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -20,215 +22,461 @@ class DeviceCard extends ConsumerWidget {
     required this.onDelete,
   });
 
-  void _showOptions(BuildContext context, WidgetRef ref, AppStrings l10n) {
-    HapticFeedback.mediumImpact();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color:
-              Theme.of(context).cardTheme.color ??
-              Theme.of(context).canvasColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              device.name,
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
+  @override
+  ConsumerState<DeviceCard> createState() => _DeviceCardState();
+}
+
+class _DeviceCardState extends ConsumerState<DeviceCard> {
+  double? _localBrightness;
+
+  Color _getDeviceColor(WledState? state) {
+    if (state == null || state.seg.isEmpty || state.seg.first.col.isEmpty) {
+      return FluxTheme.primary;
+    }
+    final col = state.seg.first.col.first;
+    if (col.length >= 3) {
+      return Color.fromARGB(255, col[0], col[1], col[2]);
+    }
+    return FluxTheme.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stateAsync = ref.watch(deviceFamilyStateProvider(widget.device));
+    final state = stateAsync.valueOrNull;
+
+    final deviceColor = _getDeviceColor(state);
+    final isOnline = stateAsync.hasValue;
+    final isOn = state?.on ?? false;
+    final hasGlow = isOnline && isOn;
+    final glowColor = hasGlow ? deviceColor : Colors.transparent;
+    final brightness = _localBrightness ?? state?.bri.toDouble() ?? 0.0;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        child: BouncyButton(
+          onTap: widget.onTap,
+          onLongPress: () {
+            HapticFeedback.heavyImpact();
+            _showDeleteConfirm(context, ref, isDark);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                if (hasGlow)
+                  BoxShadow(
+                    color: glowColor.withValues(alpha: isDark ? 0.35 : 0.2),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 8),
+                  ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              device.ip,
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: FluxTheme.error),
-              title: Text(
-                l10n.delete,
-                style: const TextStyle(color: FluxTheme.error),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.white.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.8),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          _buildStatusIcon(isOnline, isOn, deviceColor, isDark),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Hero(
+                                  tag: 'name_${widget.device.id}',
+                                  child: Material(
+                                    type: MaterialType.transparency,
+                                    child: Text(
+                                      widget.device.name,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.5,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Hero(
+                                  tag: 'ip_${widget.device.id}',
+                                  child: Material(
+                                    type: MaterialType.transparency,
+                                    child: Text(
+                                      widget.device.ip,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? Colors.white38
+                                            : Colors.black38,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isOnline)
+                            _buildPowerToggle(ref, state!, glowColor, isDark),
+                        ],
+                      ),
+                      if (isOnline) ...[
+                        const SizedBox(height: 22),
+                        _buildBrightnessControl(
+                          context,
+                          ref,
+                          state!,
+                          brightness,
+                          isOn ? deviceColor : Colors.grey,
+                          isDark,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showDeleteConfirm(context, l10n);
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusIcon(bool isOnline, bool isOn, Color color, bool isDark) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: !isOnline
+            ? (isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.03))
+            : (isOn
+                  ? color.withValues(alpha: 0.15)
+                  : (isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.03))),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isOn ? color.withValues(alpha: 0.3) : Colors.transparent,
+          width: 1,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          !isOnline
+              ? Icons.cloud_off_rounded
+              : (isOn
+                    ? Icons.lightbulb_rounded
+                    : Icons.lightbulb_outline_rounded),
+          color: !isOnline
+              ? (isDark ? Colors.white24 : Colors.black26)
+              : (isOn ? color : (isDark ? Colors.white30 : Colors.black26)),
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPowerToggle(
+    WidgetRef ref,
+    WledState state,
+    Color glowColor,
+    bool isDark,
+  ) {
+    final isOn = state.on;
+    return BouncyButton(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        final notifier = ref.read(
+          deviceFamilyStateProvider(widget.device).notifier,
+        );
+        notifier.optimisticUpdate((s) => s.copyWith(on: !isOn), () async {
+          final api = WledApiService(baseUrl: widget.device.baseUrl);
+          try {
+            return await api.setOn(!isOn);
+          } finally {
+            api.dispose();
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isOn
+              ? glowColor
+              : (isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05)),
+          shape: BoxShape.circle,
+          boxShadow: [
+            if (isOn)
+              BoxShadow(
+                color: glowColor.withValues(alpha: 0.4),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+          ],
+        ),
+        child: Icon(
+          Icons.power_settings_new_rounded,
+          color: isOn
+              ? (glowColor.computeLuminance() > 0.5
+                    ? Colors.black
+                    : Colors.white)
+              : (isDark ? Colors.white54 : Colors.black54),
+          size: 22,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBrightnessControl(
+    BuildContext context,
+    WidgetRef ref,
+    WledState state,
+    double brightness,
+    Color deviceColor,
+    bool isDark,
+  ) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: SliderTheme(
+        data: SliderThemeData(
+          trackHeight: 40,
+          trackShape: const _FullWidthTrackShape(),
+          thumbShape: SliderComponentShape.noThumb,
+          overlayShape: SliderComponentShape.noOverlay,
+          activeTrackColor: deviceColor.withValues(alpha: 0.2),
+          inactiveTrackColor: Colors.transparent,
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(
+                      Icons.light_mode_rounded,
+                      size: 16,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                    Text(
+                      '${(brightness / 255 * 100).round()}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Slider(
+              value: brightness,
+              min: 0,
+              max: 255,
+              onChanged: (val) => setState(() => _localBrightness = val),
+              onChangeEnd: (val) {
+                setState(() => _localBrightness = null);
+                ref
+                    .read(deviceFamilyStateProvider(widget.device).notifier)
+                    .optimisticUpdate(
+                      (s) => s.copyWith(bri: val.round()),
+                      () async {
+                        final api = WledApiService(
+                          baseUrl: widget.device.baseUrl,
+                        );
+                        try {
+                          return await api.setBrightness(val.round());
+                        } finally {
+                          api.dispose();
+                        }
+                      },
+                    );
               },
             ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  void _showDeleteConfirm(BuildContext context, AppStrings l10n) {
+  void _showDeleteConfirm(BuildContext context, WidgetRef ref, bool isDark) {
+    final l10n = ref.read(l10nProvider);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.delete),
-        content: Text('${l10n.deleteConfirm} (${device.name})'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.cancel),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              onDelete();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: Text(l10n.delete),
-          ),
-        ],
+      builder: (ctx) => Center(
+        child:
+            Material(
+                  type: MaterialType.transparency,
+                  child: Container(
+                    margin: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 40,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.delete_forever_rounded,
+                          color: Colors.redAccent,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          l10n.delete,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '${l10n.deleteConfirm} (${widget.device.name})',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: Text(
+                                  l10n.cancel,
+                                  style: const TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  widget.onDelete();
+                                },
+                                child: Text(l10n.delete),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .animate()
+                .scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOutBack)
+                .fadeIn(),
       ),
+    );
+  }
+}
+
+class _FullWidthTrackShape extends SliderTrackShape {
+  const _FullWidthTrackShape();
+  @override
+  Rect getPreferredRect({
+    required RenderBox parentBox,
+    Offset offset = Offset.zero,
+    required SliderThemeData sliderTheme,
+    bool isEnabled = false,
+    bool isDiscrete = false,
+  }) {
+    return Rect.fromLTWH(
+      offset.dx,
+      offset.dy,
+      parentBox.size.width,
+      parentBox.size.height,
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = ref.watch(l10nProvider);
-    final stateAsync = ref.watch(deviceFamilyStateProvider(device));
-    final state = stateAsync.valueOrNull;
-    final isOn = state?.on ?? false;
-    final bri = state?.bri.toDouble() ?? 0;
-
-    // 如果没有连接成功，回退到 device.isOnline 状态
-    final isOnline = state != null || device.isOnline;
-
-    // 提取设备颜色
-    Color displayColor = FluxTheme.online;
-    if (state != null && state.primaryColor != null) {
-      final rgb = state.primaryColor!;
-      if (rgb.length >= 3) {
-        displayColor = Color.fromARGB(255, rgb[0], rgb[1], rgb[2]);
-      }
-    }
-
-    return GlassCard(
-      onTap: onTap,
-      onLongPress: () => _showOptions(context, ref, l10n),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // 状态图标
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: isOn
-                      ? displayColor.withValues(alpha: 0.2)
-                      : FluxTheme.offline.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Hero(
-                  tag: 'icon_${device.id}',
-                  child: Icon(
-                    isOn ? Icons.lightbulb : Icons.lightbulb_outline,
-                    color: isOn ? displayColor : FluxTheme.offline,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // 设备信息
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Hero(
-                      tag: 'name_${device.id}',
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: Text(
-                          device.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      device.ip,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              // 开关
-              Switch(
-                value: isOn,
-                onChanged: (value) {
-                  ref
-                      .read(deviceFamilyStateProvider(device).notifier)
-                      .optimisticUpdate((s) => s.copyWith(on: value), () async {
-                        final api = WledApiService(baseUrl: device.baseUrl);
-                        try {
-                          return await api.setOn(value);
-                        } finally {
-                          api.dispose();
-                        }
-                      });
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // 亮度滑块
-          if (isOnline)
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 6,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
-                activeTrackColor: isOn ? displayColor : null,
-                thumbColor: isOn ? displayColor : null,
-              ),
-              child: Slider(
-                value: bri,
-                min: 0,
-                max: 255,
-                onChanged: (value) {
-                  // Update state locally first (Optimistic) would require keeping local state in widget?
-                  // Or send updates to provider rapidly?
-                  // deviceFamilyStateProvider handles optimistic updates but rebuilding on every frame of drag might be heavy if not careful.
-                  // But for now, let's just trigger updates.
-                  // Ideally we should throttle/debounce.
-                  // Since I don't have a debouncer here readily available without being stateful,
-                  // I'll make the slider interact only on "onChangeEnd" for API, but "onChanged" for visual?
-                  // No, users expect live feedback.
-                  // I will use onChangeEnd for API, and maybe skip local visual update to avoid "jumping" if provider is slow?
-                  // Actually, if I update provider optimistically, it updates UI.
-                  // But doing it every frame is bad.
-                  // Let's rely on standard Slider dragging behavior.
-                },
-                onChangeEnd: (value) {
-                  HapticFeedback.selectionClick();
-                  ref
-                      .read(deviceFamilyStateProvider(device).notifier)
-                      .optimisticUpdate(
-                        (s) => s.copyWith(bri: value.round()),
-                        () async {
-                          final api = WledApiService(baseUrl: device.baseUrl);
-                          try {
-                            return await api.setBrightness(value.round());
-                          } finally {
-                            api.dispose();
-                          }
-                        },
-                      );
-                },
-              ),
-            ),
-        ],
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+    Offset? secondaryOffset,
+    bool isDiscrete = false,
+    bool isEnabled = false,
+    double additionalActiveTrackHeight = 0,
+  }) {
+    final Rect trackRect = getPreferredRect(
+      parentBox: parentBox,
+      offset: offset,
+      sliderTheme: sliderTheme,
+    );
+    final Paint activePaint = Paint()
+      ..color = sliderTheme.activeTrackColor ?? Colors.blue;
+    final double visualWidth =
+        trackRect.width * (thumbCenter.dx / trackRect.width);
+    context.canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          trackRect.left,
+          trackRect.top,
+          visualWidth.clamp(0.0, trackRect.width),
+          trackRect.height,
+        ),
+        Radius.circular(trackRect.height / 2),
       ),
+      activePaint,
     );
   }
 }
@@ -249,60 +497,110 @@ class DiscoveredDeviceCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = ref.watch(l10nProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GlassCard(
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 12,
-                  spreadRadius: 2,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: GlassCard(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    FluxTheme.primary.withValues(alpha: 0.2),
+                    FluxTheme.primary.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
-            ),
-            child: const Icon(
-              Icons.wifi,
-              color: FluxTheme.accentColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  device.name,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(device.ip, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
-          ),
-          if (isAdded)
-            Chip(
-              label: Text(l10n.deviceAdded),
-              backgroundColor: Theme.of(
-                context,
-              ).disabledColor.withValues(alpha: 0.1),
-            )
-          else
-            FilledButton(
-              onPressed: onAdd,
-              style: FilledButton.styleFrom(
-                backgroundColor: FluxTheme.primaryColor,
-                foregroundColor: Colors.white,
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Text(l10n.add),
+              child: const Icon(
+                Icons.sensors_rounded,
+                color: FluxTheme.primary,
+                size: 24,
+              ),
             ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    device.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  Text(
+                    device.ip,
+                    style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.black38,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isAdded)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  l10n.deviceAdded,
+                  style: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              )
+            else
+              BouncyButton(
+                onTap: onAdd,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: FluxTheme.primary,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FluxTheme.primary.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    l10n.addDevice,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

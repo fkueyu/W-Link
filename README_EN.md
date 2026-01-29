@@ -1,8 +1,8 @@
-# W-Link - Modern WLED Controller
+# W-Link - Modern [WLED](https://kno.wled.ge/) Controller
 
 **[🇨🇳 中文](README.md) | 🇺🇸 English**
 
-W-Link is a modern, minimalist WLED device control app built with Flutter. It aims to provide a smooth, intuitive user experience, making WLED LED strip management simple and elegant. *(Note: This project was developed with AI assistance, for learning and reference purposes)*
+W-Link is a modern, minimalist [WLED](https://kno.wled.ge/) device control app built with Flutter. It aims to provide a smooth, intuitive user experience, making [WLED](https://kno.wled.ge/) LED strip management simple and elegant. *(Note: This project was developed with AI assistance, for learning and reference purposes)*
 
 🌐 **Official Website**: [https://ainx.ink/](https://ainx.ink/)
 🍎 **iOS**: Available on the App Store, please visit the official website for the link.
@@ -10,7 +10,7 @@ W-Link is a modern, minimalist WLED device control app built with Flutter. It ai
 
 ## ✨ Features
 
-* **Auto Discovery**: Automatically discover WLED devices on your local network via mDNS, zero configuration required.
+* **Auto Discovery**: Automatically discover [WLED](https://kno.wled.ge/) devices on your local network via mDNS, zero configuration required.
 * **Real-time Control**: Millisecond-level response for power, brightness, and color adjustments.
 * **Optimistic UI**: Instant feedback on interactions, ignoring network latency for a silky smooth experience.
 * **Modern Design**: Glassmorphism design with delicate micro-interactions powered by `flutter_animate`.

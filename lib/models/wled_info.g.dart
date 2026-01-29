@@ -51,6 +51,18 @@ WledLedInfo _$WledLedInfoFromJson(Map<String, dynamic> json) => WledLedInfo(
   pwr: (json['pwr'] as num?)?.toInt() ?? 0,
   maxSeg: (json['maxseg'] as num?)?.toInt() ?? 1,
   cct: json['cct'] == null ? false : _boolFromJson(json['cct']),
+  matrix: json['matrix'] == null
+      ? null
+      : WledMatrixInfo.fromJson(json['matrix'] as Map<String, dynamic>),
+  fps: (json['fps'] as num?)?.toInt() ?? 0,
+  bootps: (json['bootps'] as num?)?.toInt() ?? 0,
+  lc: (json['lc'] as num?)?.toInt() ?? 1,
+  wv: (json['wv'] as num?)?.toInt() ?? 0,
+  seglc:
+      (json['seglc'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList() ??
+      [],
 );
 
 Map<String, dynamic> _$WledLedInfoToJson(WledLedInfo instance) =>
@@ -61,6 +73,12 @@ Map<String, dynamic> _$WledLedInfoToJson(WledLedInfo instance) =>
       'pwr': instance.pwr,
       'maxseg': instance.maxSeg,
       'cct': instance.cct,
+      'matrix': instance.matrix,
+      'fps': instance.fps,
+      'bootps': instance.bootps,
+      'lc': instance.lc,
+      'wv': instance.wv,
+      'seglc': instance.seglc,
     };
 
 WledWifiInfo _$WledWifiInfoFromJson(Map<String, dynamic> json) => WledWifiInfo(
@@ -77,3 +95,12 @@ Map<String, dynamic> _$WledWifiInfoToJson(WledWifiInfo instance) =>
       'signal': instance.signal,
       'channel': instance.channel,
     };
+
+WledMatrixInfo _$WledMatrixInfoFromJson(Map<String, dynamic> json) =>
+    WledMatrixInfo(
+      width: (json['w'] as num?)?.toInt() ?? 0,
+      height: (json['h'] as num?)?.toInt() ?? 0,
+    );
+
+Map<String, dynamic> _$WledMatrixInfoToJson(WledMatrixInfo instance) =>
+    <String, dynamic>{'w': instance.width, 'h': instance.height};
