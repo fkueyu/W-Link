@@ -172,6 +172,17 @@ abstract class AppStrings {
   String get spacing;
   String get start;
   String get stop;
+
+  String get timerStatusScheduled;
+  String get timerStatusNotActive;
+
+  String get timerModeInstantDesc;
+  String get timerModeFadeDesc;
+  String get timerModeColorFadeDesc;
+  String get timerModeSunriseDesc;
+
+  String get scheduleTipTitle;
+  String get scheduleTipContent;
 }
 
 /// 中文实现
@@ -500,6 +511,24 @@ class ZhStrings implements AppStrings {
   String get start => '起止点';
   @override
   String get stop => '结束点';
+  @override
+  String get scheduleTipTitle => '提示';
+  @override
+  String get scheduleTipContent => '定时任务可以帮助您在入睡前自动关闭灯光，或者模拟自然的日出唤醒过程。';
+
+  @override
+  String get timerStatusScheduled => '将在定时结束后关闭/变暗';
+  @override
+  String get timerStatusNotActive => '未激活';
+
+  @override
+  String get timerModeInstantDesc => '到达时间后立即执行';
+  @override
+  String get timerModeFadeDesc => '平滑降低亮度至目标值';
+  @override
+  String get timerModeColorFadeDesc => '平滑过渡色彩和亮度';
+  @override
+  String get timerModeSunriseDesc => '模拟日出（从 0 开始增强）';
 }
 
 /// 英文实现
@@ -830,6 +859,26 @@ class EnStrings implements AppStrings {
   String get start => 'Start';
   @override
   String get stop => 'Stop';
+  @override
+  String get scheduleTipTitle => 'Tip';
+  @override
+  String get scheduleTipContent =>
+      'Schedule can help you automatically turn off lights before sleep, or simulate a natural sunrise awakening process.';
+
+  @override
+  String get timerStatusScheduled => 'Will turn off/dim after timer';
+  @override
+  String get timerStatusNotActive => 'Not Active';
+
+  @override
+  String get timerModeInstantDesc => 'Execute immediately when time is reached';
+  @override
+  String get timerModeFadeDesc => 'Smoothly dim to target brightness';
+  @override
+  String get timerModeColorFadeDesc =>
+      'Smoothly transition color and brightness';
+  @override
+  String get timerModeSunriseDesc => 'Simulate sunrise (increase from 0)';
 }
 
 /// 语言包 Provider

@@ -113,7 +113,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                       ),
                                     ),
                                     Text(
-                                      nl.on ? '将在定时结束后关闭/变暗' : '未激活',
+                                      nl.on
+                                          ? l10n.timerStatusScheduled
+                                          : l10n.timerStatusNotActive,
                                       style: TextStyle(
                                         color: isDark
                                             ? Colors.white38
@@ -182,7 +184,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         ],
 
                         const SizedBox(height: 40),
-                        _buildTipCard(isDark),
+                        _buildTipCard(isDark, l10n),
                       ],
                     );
                   },
@@ -217,10 +219,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     AppStrings l10n,
   ) {
     final modes = [
-      (0, '即时', Icons.bolt_rounded, '到达时间后立即执行'),
-      (1, l10n.modeFade, Icons.blur_on_rounded, '平滑降低亮度至目标值'),
-      (2, l10n.modeColorFade, Icons.color_lens_rounded, '平滑过渡色彩和亮度'),
-      (3, l10n.modeSunrise, Icons.wb_sunny_rounded, '模拟日出（从 0 开始增强）'),
+      (0, '即时', Icons.bolt_rounded, l10n.timerModeInstantDesc),
+      (1, l10n.modeFade, Icons.blur_on_rounded, l10n.timerModeFadeDesc),
+      (
+        2,
+        l10n.modeColorFade,
+        Icons.color_lens_rounded,
+        l10n.timerModeColorFadeDesc,
+      ),
+      (3, l10n.modeSunrise, Icons.wb_sunny_rounded, l10n.timerModeSunriseDesc),
     ];
 
     return Column(
@@ -293,7 +300,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildTipCard(bool isDark) {
+  Widget _buildTipCard(bool isDark, AppStrings l10n) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -309,19 +316,19 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             size: 32,
           ),
           const SizedBox(height: 12),
-          const Text(
-            '提示',
-            style: TextStyle(
+          Text(
+            l10n.scheduleTipTitle,
+            style: const TextStyle(
               fontWeight: FontWeight.w900,
               fontSize: 16,
               color: FluxTheme.primary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '定时任务可以帮助您在入睡前自动关闭灯光，或者模拟自然的日出唤醒过程。',
+          Text(
+            l10n.scheduleTipContent,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 13,
               height: 1.5,
               color: FluxTheme.primary,

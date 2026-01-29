@@ -138,7 +138,7 @@ class SettingsScreen extends ConsumerWidget {
                             title: l10n.appVersion,
                             icon: Icons.info_outline_rounded,
                             iconColor: Colors.tealAccent,
-                            value: 'v2.0.1',
+                            value: 'v2.0.2',
                           ),
                           _buildValueTile(
                             context: context,
