@@ -3,18 +3,20 @@ flutter_launcher_icons:
   
   ios: true
   image_path_ios: "assets/icons/icon_light.png"
-  # iOS 18 暗色模式图标 (需要透明背景)
+  # iOS 18 暗色模式图标 (由 flutter_launcher_icons 0.14.0+ 官方支持)
+  image_path_ios_dark: "assets/icons/icon_dark.png"
+  image_path_ios_tinted: "assets/icons/icon_dark.png"
+  # 兼容性字段 (部分版本可能使用此 key)
   image_path_ios_dark_transparent: "assets/icons/icon_dark.png"
   remove_alpha_ios: true
   
   android: true
   image_path_android: "assets/icons/icon_light.png"
-  # Android 自适应图标 (Android 8.0+)
-  adaptive_icon_background: "#E8D5F5"
+  # Android 自适应图标
+  adaptive_icon_background: "#FAF5FF"
   adaptive_icon_foreground: "assets/icons/icon_light.png"
-  # Android 13+ 暗色模式
-  adaptive_icon_background_dark: "#1A1A2E"
-  adaptive_icon_foreground_dark: "assets/icons/icon_dark.png"
+  # Android 13+ 单色图标 (适配暗色模式)
+  adaptive_icon_monochrome: "assets/icons/icon_dark.png"
   
   windows:
     generate: true

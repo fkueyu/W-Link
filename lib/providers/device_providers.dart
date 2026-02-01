@@ -206,7 +206,13 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
         return;
       }
 
-      state = AsyncValue.error(e, st);
+      if (e is TimeoutException ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection failed')) {
+        state = AsyncValue.error('unreachable', st);
+      } else {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 

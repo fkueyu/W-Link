@@ -130,18 +130,55 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                                   tag: 'ip_${widget.device.id}',
                                   child: Material(
                                     type: MaterialType.transparency,
-                                    child: Text(
-                                      widget.device.ip,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.5,
-                                        color: isDark
-                                            ? Colors.white.withValues(
-                                                alpha: 0.2,
-                                              )
-                                            : Colors.black38,
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          widget.device.ip,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                            color: isDark
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.2,
+                                                  )
+                                                : Colors.black38,
+                                          ),
+                                        ),
+                                        if (!isOnline) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            width: 4,
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? Colors.white24
+                                                  : Colors.black12,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            !ref.watch(isWifiConnectedProvider)
+                                                ? '未连接局域网'
+                                                : (stateAsync.hasError &&
+                                                          stateAsync.error
+                                                              .toString()
+                                                              .contains(
+                                                                'unreachable',
+                                                              )
+                                                      ? '设备已离线'
+                                                      : '连接异常'),
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.orange.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                 ),

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-02-01
+
+### Optimized / 优化
+
+- **UI Details**: Refined UI elements for better aesthetic consistency.
+  - **UI 细节优化**：优化了各处 UI 细节，提升视觉一致性。
+
+### Fixed / 修复
+
+- **Known Issues**: Fixed several identified bugs to improve stability.
+  - **修复已知问题**：修复了若干已知 Bug，提升应用稳定性.
+
 ## [2.1.0] - 2026-01-29
 
 ### Optimized / 优化

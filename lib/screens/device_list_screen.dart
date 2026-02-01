@@ -38,6 +38,7 @@ class DeviceListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final devices = ref.watch(deviceListProvider);
     final l10n = ref.watch(l10nProvider);
+    final isWifiConnected = ref.watch(isWifiConnectedProvider);
 
     return Scaffold(
       body: AnimatedBackground(
@@ -275,16 +276,58 @@ class DeviceListScreen extends ConsumerWidget {
 
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
+              // 网络状态提示
+              if (!isWifiConnected)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.wifi_off_rounded,
+                            color: Colors.orange,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              '未连接到 Wi-Fi，可能无法控制局域网内的设备',
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
               // 设备列表
               if (devices.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: EmptyState(
-                    icon: Icons.lightbulb_outline,
-                    title: l10n.noDevices,
-                    message: "点击下方按钮或右下角添加您的第一个 WLED 设备",
+                    icon: isWifiConnected
+                        ? Icons.lightbulb_outline
+                        : Icons.wifi_off_rounded,
+                    title: isWifiConnected ? l10n.noDevices : "未连接局域网",
+                    message: isWifiConnected
+                        ? "点击下方按钮或右下角添加您的第一个 WLED 设备"
+                        : "WLED 设备需要连接在同一 Wi-Fi 环境下才能使用",
                     onAction: () => _navigateToDiscovery(context),
-                    actionLabel: l10n.addDevice,
+                    actionLabel: isWifiConnected ? l10n.addDevice : "去连接 Wi-Fi",
                   ),
                 )
               else
