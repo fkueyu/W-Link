@@ -172,7 +172,7 @@ class WledApiService {
 
   /// 保存到预设
   Future<void> savePreset(int presetId, {String? name}) async {
-    final payload = {'psave': presetId, if (name != null) 'n': name};
+    final payload = {'psave': presetId, 'n': name};
     await _post('/json/state', payload);
   }
 
@@ -211,11 +211,7 @@ class WledApiService {
   Future<WledState?> updateSegment(int segmentId, {int? start, int? stop}) {
     return setState({
       'seg': [
-        {
-          'id': segmentId,
-          if (start != null) 'start': start,
-          if (stop != null) 'stop': stop,
-        },
+        {'id': segmentId, 'start': start, 'stop': stop},
       ],
     });
   }
