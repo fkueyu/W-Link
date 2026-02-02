@@ -148,7 +148,9 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
 
   DeviceStateNotifier(this._api, this._ref)
     : super(const AsyncValue.loading()) {
-    if (_api != null) _startPolling();
+    if (_api != null) {
+      _startPolling();
+    }
   }
 
   void _startPolling() {
@@ -159,18 +161,19 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   Future<void> _fetchState() async {
     if (_api == null || !mounted) return;
     if (DateTime.now().difference(_lastUserActionTime).inSeconds <
-        _protectionSeconds)
+        _protectionSeconds) {
       return;
+    }
 
     try {
-      final newState = await _api!.getState();
+      final newState = await _api.getState();
       if (!mounted) return;
 
       state = AsyncValue.data(newState);
       _failureCount = 0;
 
       final realName = newState.info.name;
-      final ip = _api!.baseUrl.replaceAll('http://', '').split(':').first;
+      final ip = _api.baseUrl.replaceAll('http://', '').split(':').first;
       _ref
           .read(deviceListProvider.notifier)
           .updateOnlineStatus(
@@ -237,8 +240,9 @@ final presetsProvider = FutureProvider<List<WledPreset>>((ref) async {
   final List<WledPreset> list = [];
   presetsMap.forEach((k, v) {
     final id = int.tryParse(k);
-    if (id != null && id != 0 && v is Map<String, dynamic>)
+    if (id != null && id != 0 && v is Map<String, dynamic>) {
       list.add(WledPreset.fromJson(id, v));
+    }
   });
   return list..sort((a, b) => a.id.compareTo(b.id));
 });
