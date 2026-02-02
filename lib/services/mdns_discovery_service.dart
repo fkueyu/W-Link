@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -159,7 +160,10 @@ class MdnsDiscoveryService {
       final response = await request.close();
 
       if (response.statusCode == 200) {
-        return WledDevice.manual(ip: ip, port: port);
+        final content = await response.transform(utf8.decoder).join();
+        final json = jsonDecode(content) as Map<String, dynamic>;
+        final deviceName = json['name'] as String? ?? 'WLED $ip';
+        return WledDevice.manual(ip: ip, port: port, name: deviceName);
       }
     } catch (_) {
       // 设备不可达或不是 WLED

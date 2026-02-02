@@ -2,6 +2,7 @@
 class WledDevice {
   final String id;
   final String name;
+  final String originalName;
   final String ip;
   final int port;
   final bool isOnline;
@@ -10,6 +11,7 @@ class WledDevice {
   const WledDevice({
     required this.id,
     required this.name,
+    required this.originalName,
     required this.ip,
     this.port = 80,
     this.isOnline = false,
@@ -21,6 +23,7 @@ class WledDevice {
   WledDevice copyWith({
     String? id,
     String? name,
+    String? originalName,
     String? ip,
     int? port,
     bool? isOnline,
@@ -29,6 +32,7 @@ class WledDevice {
     return WledDevice(
       id: id ?? this.id,
       name: name ?? this.name,
+      originalName: originalName ?? this.originalName,
       ip: ip ?? this.ip,
       port: port ?? this.port,
       isOnline: isOnline ?? this.isOnline,
@@ -39,46 +43,68 @@ class WledDevice {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'originalName': originalName,
     'ip': ip,
     'port': port,
     'lastSeen': lastSeen?.toIso8601String(),
   };
 
-  factory WledDevice.fromJson(Map<String, dynamic> json) => WledDevice(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    ip: json['ip'] as String,
-    port: json['port'] as int? ?? 80,
-    lastSeen: json['lastSeen'] != null
-        ? DateTime.tryParse(json['lastSeen'] as String)
-        : null,
-    isOnline: false, // 初始加载默认离线
-  );
+  factory WledDevice.fromJson(Map<String, dynamic> json) {
+    final name = json['name'] as String;
+    return WledDevice(
+      id: json['id'] as String,
+      name: name,
+      originalName: json['originalName'] as String? ?? name,
+      ip: json['ip'] as String,
+      port: json['port'] as int? ?? 80,
+      lastSeen: json['lastSeen'] != null
+          ? DateTime.tryParse(json['lastSeen'] as String)
+          : null,
+      isOnline: false,
+    );
+  }
 
   /// 从 mDNS 发现创建设备
   factory WledDevice.fromMdns({
     required String name,
     required String ip,
     int port = 80,
-  }) => WledDevice(id: ip.replaceAll('.', '_'), name: name, ip: ip, port: port);
+  }) {
+    return WledDevice(
+      id: ip.replaceAll('.', '_'),
+      name: name,
+      originalName: name,
+      ip: ip,
+      port: port,
+    );
+  }
 
   /// 从手动输入创建设备
-  factory WledDevice.manual({
-    required String ip,
-    String? name,
-    int port = 80,
-  }) => WledDevice(
-    id: ip.replaceAll('.', '_'),
-    name: name ?? 'WLED $ip',
-    ip: ip,
-    port: port,
-  );
+  factory WledDevice.manual({required String ip, String? name, int port = 80}) {
+    final defaultName = name ?? 'WLED $ip';
+    return WledDevice(
+      id: ip.replaceAll('.', '_'),
+      name: defaultName,
+      originalName: defaultName,
+      ip: ip,
+      port: port,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is WledDevice && runtimeType == other.runtimeType && id == other.id;
+      other is WledDevice &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          originalName == other.originalName &&
+          ip == other.ip &&
+          port == other.port &&
+          lastSeen == other.lastSeen &&
+          isOnline == other.isOnline;
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode =>
+      Object.hash(id, name, originalName, ip, port, lastSeen, isOnline);
 }

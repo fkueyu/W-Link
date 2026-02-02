@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-02-02
+
+### Optimized / 优化
+
+- **Light Icons**: Refined light mode icons for better visual consistency.
+  - **亮色图标优化**：优化了亮色模式下的图标视觉效果。
+- **Device List**: Refined list page to prevent empty states when devices are offline.
+  - **列表页重构**：优化并重构了列表页逻辑，避免设备离线时显示空白。
+- **Control Screen**: Fine-tuned details on the device control screen for a better user experience.
+  - **设备详情页优化**：对设备详情页进行了多项交互细节优化。
+
+### Added / 新增
+
+- **Custom Alias**: Users can now set custom names (remarks) for their WLED devices.
+  - **设备备注支持**：现在支持为 WLED 设备修改并保存备注名称。
+
 ## [2.1.1] - 2026-02-01
 
 ### Optimized / 优化

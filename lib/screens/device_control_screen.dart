@@ -34,11 +34,25 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
   double? _localBrightness;
 
   @override
+  void initState() {
+    super.initState();
+    // 确保进入页面时，当前全局设备 ID 已正确设置
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(currentDeviceIdProvider.notifier).state = widget.device.id;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final stateAsync = ref.watch(deviceStateProvider);
     final api = ref.watch(wledApiProvider);
     final l10n = ref.watch(l10nProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // 监听实时设备对象以获取最新名称
+    final currentDevice = ref.watch(currentDeviceProvider) ?? widget.device;
 
     return Scaffold(
       body: AnimatedBackground(
@@ -51,8 +65,14 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   child: CircularProgressIndicator(color: FluxTheme.primary),
                 ),
                 error: (e, _) => _buildErrorState(e, l10n),
-                data: (state) =>
-                    _buildMainContent(context, state, api, l10n, isDark),
+                data: (state) => _buildMainContent(
+                  context,
+                  currentDevice,
+                  state,
+                  api,
+                  l10n,
+                  isDark,
+                ),
               ),
             ),
 
@@ -196,6 +216,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
 
   Widget _buildMainContent(
     BuildContext context,
+    WledDevice currentDevice,
     WledState state,
     WledApiService? api,
     AppStrings l10n,
@@ -217,6 +238,8 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: _buildControlHero(
+              context,
+              currentDevice,
               state,
               api,
               primaryColor,
@@ -261,6 +284,8 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
   }
 
   Widget _buildControlHero(
+    BuildContext context,
+    WledDevice device,
     WledState state,
     WledApiService? api,
     Color color,
@@ -288,7 +313,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             decoration: FluxTheme.glassDecoration(
               context,
               radius: 40,
@@ -300,42 +325,46 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l10n.device.toUpperCase(),
-                            style: TextStyle(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.25)
-                                  : Colors.black38,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 2.0,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Hero(
-                            tag: 'name_${widget.device.id}',
-                            child: Material(
-                              type: MaterialType.transparency,
-                              child: Text(
-                                widget.device.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 30,
-                                  letterSpacing: -1.2,
+                      child: BouncyButton(
+                        onTap: () =>
+                            _showRenameDialog(context, device, l10n, isDark),
+                        child: Hero(
+                          tag: 'name_${device.id}',
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    device.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 24,
+                                      letterSpacing: -0.8,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.edit_rounded,
+                                  size: 16,
+                                  color: isDark
+                                      ? Colors.white24
+                                      : Colors.black12,
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 16),
                     _buildPowerButton(isOn, color, api, isDark),
                   ],
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: 24),
                 _buildBrightnessSector(
                   brightness,
                   isOn,
@@ -349,6 +378,150 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showRenameDialog(
+    BuildContext context,
+    WledDevice device,
+    AppStrings l10n,
+    bool isDark,
+  ) {
+    final controller = TextEditingController(text: device.name);
+    showDialog(
+      context: context,
+      builder: (ctx) => Center(
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            margin: const EdgeInsets.all(32),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.rename,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  (l10n is ZhStrings)
+                      ? '为您的设备设置一个易于识别的备注'
+                      : 'Set a recognizable name for your device',
+                  style: TextStyle(
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    hintText: l10n.device,
+                    filled: true,
+                    fillColor: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.03),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(
+                          l10n.cancel,
+                          style: TextStyle(
+                            color: isDark ? Colors.white38 : Colors.black38,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: BouncyButton(
+                        onTap: () {
+                          final newName = controller.text.trim();
+                          String finalName;
+
+                          if (newName.isEmpty) {
+                            // 1. 优先尝试从实时状态中获取设备当前的真实名字
+                            final state = ref
+                                .read(deviceStateProvider)
+                                .valueOrNull;
+                            if (state != null && state.info.name.isNotEmpty) {
+                              finalName = state.info.name;
+                            } else {
+                              // 2. 备选方案：使用添加时的初始名字
+                              finalName = device.originalName;
+                            }
+                          } else {
+                            finalName = newName;
+                          }
+
+                          ref
+                              .read(deviceListProvider.notifier)
+                              .updateDeviceName(device.id, finalName);
+                          Navigator.pop(ctx);
+                          AppToast.success(
+                            context,
+                            (l10n is ZhStrings) ? '名称已更新' : 'Name updated',
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: FluxTheme.primary,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(
+                              l10n.save,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ).animate().scale(begin: const Offset(0.9, 0.9)).fadeIn(),
     );
   }
 
@@ -370,7 +543,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isOn
               ? (isDark
@@ -404,7 +577,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           color: isOn
               ? Colors.white
               : (isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black54),
-          size: 32,
+          size: 24,
         ),
       ),
     );
@@ -438,13 +611,22 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
               widthFactor: (value / 255).clamp(0.01, 1.0),
               child: Container(
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: isDark ? 0.4 : 0.3),
+                  color: isOn
+                      ? color.withValues(alpha: isDark ? 0.4 : 0.3)
+                      : (isDark ? Colors.white12 : Colors.black12),
                   borderRadius: BorderRadius.circular(24),
                   gradient: LinearGradient(
-                    colors: [
-                      color.withValues(alpha: isDark ? 0.3 : 0.2),
-                      color.withValues(alpha: isDark ? 0.8 : 0.7),
-                    ],
+                    colors: isOn
+                        ? [
+                            color.withValues(alpha: isDark ? 0.3 : 0.2),
+                            color.withValues(alpha: isDark ? 0.8 : 0.7),
+                          ]
+                        : [
+                            isDark
+                                ? Colors.white10
+                                : Colors.black.withValues(alpha: 0.05),
+                            isDark ? Colors.white24 : Colors.black26,
+                          ],
                   ),
                 ),
               ),

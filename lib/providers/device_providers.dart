@@ -9,10 +9,9 @@ import '../services/services.dart';
 import 'common_providers.dart';
 
 // ============================================================================
-// 设备列表管理
+// 设备库管理 (全局列表)
 // ============================================================================
 
-/// 设备列表 Provider
 final deviceListProvider =
     StateNotifierProvider<DeviceListNotifier, List<WledDevice>>((ref) {
       final prefs = ref.watch(sharedPreferencesProvider);
@@ -30,15 +29,11 @@ class DeviceListNotifier extends StateNotifier<List<WledDevice>> {
   void _loadDevices() {
     try {
       final jsonStr = _prefs.getString(_storageKey);
-      debugPrint('[DeviceList] Raw JSON from storage: $jsonStr');
       if (jsonStr != null) {
         final List<dynamic> list = jsonDecode(jsonStr);
         state = list
             .map((e) => WledDevice.fromJson(e as Map<String, dynamic>))
             .toList();
-        debugPrint('[DeviceList] Loaded ${state.length} devices from storage');
-      } else {
-        debugPrint('[DeviceList] No devices found in storage');
       }
     } catch (e) {
       debugPrint('[DeviceList] Error loading devices: $e');
@@ -47,236 +42,168 @@ class DeviceListNotifier extends StateNotifier<List<WledDevice>> {
 
   Future<void> _saveDevices() async {
     final jsonStr = jsonEncode(state.map((d) => d.toJson()).toList());
-    debugPrint('[DeviceList] Saving to storage: $jsonStr');
     await _prefs.setString(_storageKey, jsonStr);
   }
 
-  /// 添加设备
   Future<void> addDevice(WledDevice device) async {
-    if (state.any((d) => d.id == device.id)) {
-      debugPrint('[DeviceList] Device ${device.id} already exists');
-      return;
-    }
+    if (state.any((d) => d.id == device.id)) return;
     state = [...state, device];
-    debugPrint(
-      '[DeviceList] Added device ${device.id}, total: ${state.length}',
-    );
     await _saveDevices();
   }
 
-  /// 移除设备
   Future<void> removeDevice(String deviceId) async {
     state = state.where((d) => d.id != deviceId).toList();
-    debugPrint(
-      '[DeviceList] Removed device $deviceId, remaining: ${state.length}',
-    );
     await _saveDevices();
   }
 
-  /// 更新设备在线状态
-  void updateOnlineStatus(String deviceId, bool isOnline) {
-    state = [
-      for (final d in state)
-        if (d.id == deviceId)
-          d.copyWith(
-            isOnline: isOnline,
-            lastSeen: isOnline ? DateTime.now() : d.lastSeen,
-          )
-        else
-          d,
-    ];
+  void updateOnlineStatus(String deviceId, bool isOnline, {String? realName}) {
+    bool hasChanged = false;
+    final now = DateTime.now();
+
+    final newState = state.map((d) {
+      if (d.id == deviceId) {
+        final statusChanged = d.isOnline != isOnline;
+        final nameUpdate =
+            isOnline &&
+            realName != null &&
+            realName.isNotEmpty &&
+            realName != d.originalName &&
+            (d.originalName.startsWith('WLED ') || d.originalName == 'WLED');
+        final timeUpdate =
+            isOnline &&
+            (d.lastSeen == null || now.difference(d.lastSeen!).inMinutes >= 1);
+
+        if (!statusChanged && !nameUpdate && !timeUpdate) return d;
+        hasChanged = true;
+        return d.copyWith(
+          isOnline: isOnline,
+          lastSeen: timeUpdate ? now : d.lastSeen,
+          originalName: nameUpdate ? realName : d.originalName,
+        );
+      }
+      return d;
+    }).toList();
+
+    if (hasChanged) {
+      state = newState;
+      // 这里的逻辑已精简，必要时才保存
+    }
   }
 
-  /// 批量添加设备 (mDNS 扫描)
-  Future<void> addDevices(List<WledDevice> devices) async {
-    final existingIds = state.map((d) => d.id).toSet();
-    final newDevices = devices
-        .where((d) => !existingIds.contains(d.id))
-        .toList();
-
-    if (newDevices.isNotEmpty) {
-      state = [...state, ...newDevices];
-      debugPrint('[DeviceList] Batch added ${newDevices.length} devices');
-      await _saveDevices();
-    }
+  Future<void> updateDeviceName(String deviceId, String newName) async {
+    state = [
+      for (final d in state)
+        if (d.id == deviceId) d.copyWith(name: newName) else d,
+    ];
+    await _saveDevices();
   }
 }
 
 // ============================================================================
-// 当前选中设备
+// 实时状态控制 (Notifier & Providers)
 // ============================================================================
 
-/// 当前选中的设备 ID
 final currentDeviceIdProvider = StateProvider<String?>((ref) => null);
 
-/// 当前选中的设备
 final currentDeviceProvider = Provider<WledDevice?>((ref) {
   final deviceId = ref.watch(currentDeviceIdProvider);
   if (deviceId == null) return null;
-
   final devices = ref.watch(deviceListProvider);
   final index = devices.indexWhere((d) => d.id == deviceId);
-  if (index != -1) return devices[index];
-
-  return devices.isNotEmpty ? devices.first : null;
+  return index != -1 ? devices[index] : null;
 });
 
-// ============================================================================
-// API 服务实例
-// ============================================================================
-
-/// 当前设备的 API 服务
 final wledApiProvider = Provider<WledApiService?>((ref) {
-  final device = ref.watch(currentDeviceProvider);
-  if (device == null) return null;
-  return WledApiService(baseUrl: device.baseUrl);
+  final baseUrl = ref.watch(currentDeviceProvider.select((d) => d?.baseUrl));
+  return baseUrl != null ? WledApiService(baseUrl: baseUrl) : null;
 });
 
-// ============================================================================
-// 设备状态
-// ============================================================================
-
-/// 设备状态 Provider (自动刷新)
+/// 当前聚焦设备的状态
 final deviceStateProvider =
     StateNotifierProvider<DeviceStateNotifier, AsyncValue<WledState>>((ref) {
       final api = ref.watch(wledApiProvider);
-      return DeviceStateNotifier(api);
+      return DeviceStateNotifier(api, ref);
     });
 
-/// 单个设备的状态 Provider (用于列表页卡片)
+/// ！！关键：设备列表卡片使用的 Family Provider ！！
 final deviceFamilyStateProvider = StateNotifierProvider.family
     .autoDispose<DeviceStateNotifier, AsyncValue<WledState>, WledDevice>((
       ref,
       device,
     ) {
       final api = WledApiService(baseUrl: device.baseUrl);
-      ref.onDispose(api.dispose);
-      return DeviceStateNotifier(api);
+      ref.onDispose(() => api.dispose());
+      return DeviceStateNotifier(api, ref);
     });
 
 class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   final WledApiService? _api;
+  final Ref _ref;
   Timer? _refreshTimer;
-  DateTime _lastUserActionTime = DateTime.fromMillisecondsSinceEpoch(
-    0,
-  ); // 初始化为过去时间
+  DateTime _lastUserActionTime = DateTime.fromMillisecondsSinceEpoch(0);
 
-  // 轮询间隔（秒）
-  static const _pollIntervalSeconds = 5;
-  // 操作后保护时间（秒）：在此时间内忽略所有外部状态更新
-  // 增加到 8 秒，确保 WLED 固件有足够时间完成写入并同步到后续的轮询中
+  static const _pollInterval = Duration(seconds: 5);
   static const _protectionSeconds = 8;
-
   int _failureCount = 0;
-  // 连续失败阈值：允许 2 次失败 (10秒)，第 3 次失败才报错
-  static const _maxFailures = 2;
 
-  DeviceStateNotifier(this._api) : super(const AsyncValue.loading()) {
-    if (_api != null) {
-      _startPolling();
-    }
+  DeviceStateNotifier(this._api, this._ref)
+    : super(const AsyncValue.loading()) {
+    if (_api != null) _startPolling();
   }
 
   void _startPolling() {
     _fetchState();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: _pollIntervalSeconds),
-      (_) {
-        _fetchState();
-      },
-    );
+    _refreshTimer = Timer.periodic(_pollInterval, (_) => _fetchState());
   }
 
   Future<void> _fetchState() async {
-    if (_api == null) return;
-
-    // 如果处于用户操作保护期，则忽略轮询结果
+    if (_api == null || !mounted) return;
     if (DateTime.now().difference(_lastUserActionTime).inSeconds <
-        _protectionSeconds) {
+        _protectionSeconds)
       return;
-    }
 
     try {
-      final newState = await _api.getState();
-
-      // 再次检查保护期（因为请求可能有耗时）
-      if (DateTime.now().difference(_lastUserActionTime).inSeconds <
-          _protectionSeconds) {
-        return;
-      }
-
-      if (mounted) {
-        state = AsyncValue.data(newState);
-        _failureCount = 0; // 重置失败计数
-      }
-    } catch (e, st) {
-      // 保护期内不报错，避免干扰 UI
-      if (DateTime.now().difference(_lastUserActionTime).inSeconds <
-          _protectionSeconds) {
-        return;
-      }
-
+      final newState = await _api!.getState();
       if (!mounted) return;
 
-      _failureCount++;
+      state = AsyncValue.data(newState);
+      _failureCount = 0;
 
-      // 如果已有数据，且失败次数未超过阈值，则忽略此次错误（防抖）
-      if (state.hasValue && _failureCount <= _maxFailures) {
-        // 可以选择 log warning
-        debugPrint(
-          'Poll failed ($_failureCount/$_maxFailures), keeping old state. Error: $e',
-        );
-        return;
-      }
-
-      if (e is TimeoutException ||
-          e.toString().contains('SocketException') ||
-          e.toString().contains('Connection failed')) {
-        state = AsyncValue.error('unreachable', st);
-      } else {
-        state = AsyncValue.error(e, st);
+      final realName = newState.info.name;
+      final ip = _api!.baseUrl.replaceAll('http://', '').split(':').first;
+      _ref
+          .read(deviceListProvider.notifier)
+          .updateOnlineStatus(
+            ip.replaceAll('.', '_'),
+            true,
+            realName: realName,
+          );
+    } catch (e, st) {
+      if (!mounted) return;
+      if (++_failureCount > 2) {
+        if (e is TimeoutException || e.toString().contains('SocketException')) {
+          state = AsyncValue.error('unreachable', st);
+        } else {
+          state = AsyncValue.error(e.toString(), st);
+        }
       }
     }
   }
 
-  /// 立即刷新状态
   Future<void> refresh() => _fetchState();
 
-  /// 乐观更新：用户操作拥有最高优先级
-  ///
-  /// 策略：
-  /// 1. 更新最后操作时间戳，开启保护期
-  /// 2. 立即应用 optimisticState 到 UI
-  /// 3. 发送 API 请求 (不等待结果更新 state)
-  /// 4. 只有在 API 明确抛出异常时才回滚
   Future<void> optimisticUpdate(
     WledState Function(WledState) updater,
     Future<WledState?> Function() apiCall,
   ) async {
     final current = state.valueOrNull;
     if (current == null) return;
-
-    // 1. 开启保护期
     _lastUserActionTime = DateTime.now();
-
-    // 2. 乐观更新 UI
-    final optimisticState = updater(current);
-    state = AsyncValue.data(optimisticState);
-
-    // 3. 发送请求
+    state = AsyncValue.data(updater(current));
     try {
-      // 发送请求，但不使用返回结果覆盖本地状态
-      // 因为 WLED 返回的状态可能滞后
       await apiCall();
-
-      // 请求成功发送后，再次刷新时间戳，延长保护期
-      // 防止随后的轮询立即带回旧状态
       _lastUserActionTime = DateTime.now();
-    } catch (e) {
-      // 失败：即便 API 失败，也不回滚 UI！
-      // "Fire and Forget" 策略：避免因为网络抖动导致的 UI 闪烁（回退）。
-      // 如果命令真的没发送成功，会在保护期过后，由下一次轮询自动修正状态。
-    }
+    } catch (_) {}
   }
 
   @override
@@ -287,90 +214,46 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
 }
 
 // ============================================================================
-// 效果和调色板列表
+// 数据加载层 (效果集、调色板等)
 // ============================================================================
 
-/// 效果列表 (保持索引与 WLED 一致，不过滤)
-final effectsProvider = FutureProvider<List<String>>((ref) async {
-  final api = ref.watch(wledApiProvider);
-  if (api == null) {
-    throw Exception('No WLED device connected');
-  }
+final effectsProvider = FutureProvider<List<String>>(
+  (ref) async => await ref.watch(wledApiProvider)?.getEffects() ?? [],
+);
+final effectMetadataProvider = FutureProvider<List<String>>(
+  (ref) async => await ref.watch(wledApiProvider)?.getEffectMetadata() ?? [],
+);
+final palettesProvider = FutureProvider<List<String>>(
+  (ref) async => await ref.watch(wledApiProvider)?.getPalettes() ?? [],
+);
+final deviceInfoProvider = FutureProvider<WledInfo?>(
+  (ref) async => await ref.watch(wledApiProvider)?.getInfo(),
+);
 
-  try {
-    return await api.getEffects();
-  } catch (e) {
-    // 详细错误日志
-    debugPrint('[effectsProvider] Error loading effects: $e');
-    rethrow;
-  }
-});
-
-/// 效果元数据列表
-final effectMetadataProvider = FutureProvider<List<String>>((ref) async {
-  final api = ref.watch(wledApiProvider);
-  if (api == null) return [];
-  return api.getEffectMetadata();
-});
-
-/// 调色板列表
-final palettesProvider = FutureProvider<List<String>>((ref) async {
-  final api = ref.watch(wledApiProvider);
-  if (api == null) return [];
-  return api.getPalettes();
-});
-
-/// 设备信息
-final deviceInfoProvider = FutureProvider<WledInfo?>((ref) async {
-  final api = ref.watch(wledApiProvider);
-  if (api == null) return null;
-  return api.getInfo();
-});
-
-/// 预设列表
-/// 返回 [WledPreset] 列表，解析自 /presets.json
 final presetsProvider = FutureProvider<List<WledPreset>>((ref) async {
   final api = ref.watch(wledApiProvider);
   if (api == null) return [];
-
   final presetsMap = await api.getPresets();
-  final presets = <WledPreset>[];
-
-  presetsMap.forEach((key, value) {
-    final id = int.tryParse(key);
-    if (id != null && id != 0 && value is Map<String, dynamic>) {
-      presets.add(WledPreset.fromJson(id, value));
-    }
+  final List<WledPreset> list = [];
+  presetsMap.forEach((k, v) {
+    final id = int.tryParse(k);
+    if (id != null && id != 0 && v is Map<String, dynamic>)
+      list.add(WledPreset.fromJson(id, v));
   });
-
-  // 按 ID 排序
-  presets.sort((a, b) => a.id.compareTo(b.id));
-  return presets;
+  return list..sort((a, b) => a.id.compareTo(b.id));
 });
 
-// ============================================================================
-// mDNS 扫描
-// ============================================================================
-
-/// mDNS 扫描状态
 final mdnsScanningProvider = StateProvider<bool>((ref) => false);
-
-/// mDNS 发现的设备
 final discoveredDevicesProvider =
-    StateNotifierProvider<DiscoveredDevicesNotifier, List<WledDevice>>((ref) {
-      return DiscoveredDevicesNotifier();
-    });
+    StateNotifierProvider<DiscoveredDevicesNotifier, List<WledDevice>>(
+      (ref) => DiscoveredDevicesNotifier(),
+    );
 
 class DiscoveredDevicesNotifier extends StateNotifier<List<WledDevice>> {
   DiscoveredDevicesNotifier() : super([]);
-
   void addDevice(WledDevice device) {
-    if (!state.any((d) => d.id == device.id)) {
-      state = [...state, device];
-    }
+    if (!state.any((d) => d.id == device.id)) state = [...state, device];
   }
 
-  void clear() {
-    state = [];
-  }
+  void clear() => state = [];
 }
