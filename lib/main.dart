@@ -6,7 +6,6 @@ import 'screens/screens.dart';
 import 'providers/providers.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

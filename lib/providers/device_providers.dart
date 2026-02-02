@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/core.dart';
 import '../models/models.dart';
 import '../services/services.dart';
+import 'common_providers.dart';
 
 // ============================================================================
 // 设备列表管理
@@ -13,43 +15,61 @@ import '../services/services.dart';
 /// 设备列表 Provider
 final deviceListProvider =
     StateNotifierProvider<DeviceListNotifier, List<WledDevice>>((ref) {
-      return DeviceListNotifier();
+      final prefs = ref.watch(sharedPreferencesProvider);
+      return DeviceListNotifier(prefs);
     });
 
 class DeviceListNotifier extends StateNotifier<List<WledDevice>> {
-  static const _storageKey = 'flux_devices';
+  static const String _storageKey = AppConstants.keyDevices;
+  final SharedPreferences _prefs;
 
-  DeviceListNotifier() : super([]) {
+  DeviceListNotifier(this._prefs) : super([]) {
     _loadDevices();
   }
 
-  Future<void> _loadDevices() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString(_storageKey);
-    if (json != null) {
-      final list = jsonDecode(json) as List;
-      state = list
-          .map((e) => WledDevice.fromJson(e as Map<String, dynamic>))
-          .toList();
+  void _loadDevices() {
+    try {
+      final jsonStr = _prefs.getString(_storageKey);
+      debugPrint('[DeviceList] Raw JSON from storage: $jsonStr');
+      if (jsonStr != null) {
+        final List<dynamic> list = jsonDecode(jsonStr);
+        state = list
+            .map((e) => WledDevice.fromJson(e as Map<String, dynamic>))
+            .toList();
+        debugPrint('[DeviceList] Loaded ${state.length} devices from storage');
+      } else {
+        debugPrint('[DeviceList] No devices found in storage');
+      }
+    } catch (e) {
+      debugPrint('[DeviceList] Error loading devices: $e');
     }
   }
 
   Future<void> _saveDevices() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = jsonEncode(state.map((d) => d.toJson()).toList());
-    await prefs.setString(_storageKey, json);
+    final jsonStr = jsonEncode(state.map((d) => d.toJson()).toList());
+    debugPrint('[DeviceList] Saving to storage: $jsonStr');
+    await _prefs.setString(_storageKey, jsonStr);
   }
 
   /// 添加设备
   Future<void> addDevice(WledDevice device) async {
-    if (state.any((d) => d.id == device.id)) return;
+    if (state.any((d) => d.id == device.id)) {
+      debugPrint('[DeviceList] Device ${device.id} already exists');
+      return;
+    }
     state = [...state, device];
+    debugPrint(
+      '[DeviceList] Added device ${device.id}, total: ${state.length}',
+    );
     await _saveDevices();
   }
 
   /// 移除设备
   Future<void> removeDevice(String deviceId) async {
     state = state.where((d) => d.id != deviceId).toList();
+    debugPrint(
+      '[DeviceList] Removed device $deviceId, remaining: ${state.length}',
+    );
     await _saveDevices();
   }
 
@@ -69,11 +89,14 @@ class DeviceListNotifier extends StateNotifier<List<WledDevice>> {
 
   /// 批量添加设备 (mDNS 扫描)
   Future<void> addDevices(List<WledDevice> devices) async {
-    final newDevices = devices.where(
-      (d) => !state.any((existing) => existing.id == d.id),
-    );
+    final existingIds = state.map((d) => d.id).toSet();
+    final newDevices = devices
+        .where((d) => !existingIds.contains(d.id))
+        .toList();
+
     if (newDevices.isNotEmpty) {
       state = [...state, ...newDevices];
+      debugPrint('[DeviceList] Batch added ${newDevices.length} devices');
       await _saveDevices();
     }
   }
@@ -92,10 +115,10 @@ final currentDeviceProvider = Provider<WledDevice?>((ref) {
   if (deviceId == null) return null;
 
   final devices = ref.watch(deviceListProvider);
-  return devices.firstWhere(
-    (d) => d.id == deviceId,
-    orElse: () => devices.first,
-  );
+  final index = devices.indexWhere((d) => d.id == deviceId);
+  if (index != -1) return devices[index];
+
+  return devices.isNotEmpty ? devices.first : null;
 });
 
 // ============================================================================
@@ -253,16 +276,6 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
       // 失败：即便 API 失败，也不回滚 UI！
       // "Fire and Forget" 策略：避免因为网络抖动导致的 UI 闪烁（回退）。
       // 如果命令真的没发送成功，会在保护期过后，由下一次轮询自动修正状态。
-      // Log error if needed: print('Effect update failed: $e');
-
-      // 但我们需要允许轮询尽快恢复，以便修正可能的不一致
-      // 所以如果确信失败，可以缩短保护期，或者保持现状等待。
-      // 这里选择不回滚，给用户“由于网络慢但最终会成功”的错觉，体验更好。
-
-      // 仍然重置时间戳为 0？不，如果重置为 0，下一秒轮询回来如果是旧状态，还是会闪。
-      // 所以：保持乐观状态，保持保护期。
-      // 即使 API 失败，我们也假设用户希望看到新状态。
-      // 只有当轮询真正拿回了新数据（或者依旧是旧数据）且保护期过了之后，才更新。
     }
   }
 

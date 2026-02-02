@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../providers/common_providers.dart';
 
 /// 收藏夹服务
 /// 管理特效和调色板的收藏状态
@@ -69,12 +70,6 @@ class FavoritesService {
     );
   }
 }
-
-/// SharedPreferences Provider
-/// 需要在 main.dart 中覆盖
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError();
-});
 
 /// FavoritesService Provider
 final favoritesServiceProvider = Provider<FavoritesService>((ref) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'common_providers.dart';
 
 // ============================================================================
 // 设置管理
@@ -13,7 +14,8 @@ enum LanguageOption { system, zh, en }
 final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((
   ref,
 ) {
-  return SettingsNotifier();
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return SettingsNotifier(prefs);
 });
 
 class AppSettings {
@@ -31,7 +33,9 @@ class AppSettings {
 }
 
 class SettingsNotifier extends StateNotifier<AppSettings> {
-  SettingsNotifier()
+  final SharedPreferences _prefs;
+
+  SettingsNotifier(this._prefs)
     : super(
         AppSettings(
           themeMode: ThemeModeOption.system,
@@ -44,11 +48,9 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   static const _themeKey = 'settings_theme_mode';
   static const _langKey = 'settings_language';
 
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final themeIndex = prefs.getInt(_themeKey) ?? 0;
-    final langIndex = prefs.getInt(_langKey) ?? 0;
+  void _loadSettings() {
+    final themeIndex = _prefs.getInt(_themeKey) ?? 0;
+    final langIndex = _prefs.getInt(_langKey) ?? 0;
 
     state = AppSettings(
       themeMode: ThemeModeOption.values[themeIndex],
@@ -58,14 +60,12 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   Future<void> setThemeMode(ThemeModeOption mode) async {
     state = state.copyWith(themeMode: mode);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_themeKey, mode.index);
+    await _prefs.setInt(_themeKey, mode.index);
   }
 
   Future<void> setLanguage(LanguageOption lang) async {
     state = state.copyWith(language: lang);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_langKey, lang.index);
+    await _prefs.setInt(_langKey, lang.index);
   }
 
   ThemeMode get themeMode {

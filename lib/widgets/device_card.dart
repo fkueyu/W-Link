@@ -185,16 +185,17 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                               ],
                             ),
                           ),
-                          _buildPowerToggle(
-                            ref,
-                            state!,
-                            glowColor,
-                            isDark,
-                            isOnline,
-                          ),
+                          if (state != null)
+                            _buildPowerToggle(
+                              ref,
+                              state,
+                              glowColor,
+                              isDark,
+                              isOnline,
+                            ),
                         ],
                       ),
-                      if (isOnline) ...[
+                      if (isOnline && state != null) ...[
                         const SizedBox(height: 28),
                         _buildBrightnessControl(
                           context,

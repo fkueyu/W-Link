@@ -41,6 +41,7 @@ class WledDevice {
     'name': name,
     'ip': ip,
     'port': port,
+    'lastSeen': lastSeen?.toIso8601String(),
   };
 
   factory WledDevice.fromJson(Map<String, dynamic> json) => WledDevice(
@@ -48,6 +49,10 @@ class WledDevice {
     name: json['name'] as String,
     ip: json['ip'] as String,
     port: json['port'] as int? ?? 80,
+    lastSeen: json['lastSeen'] != null
+        ? DateTime.tryParse(json['lastSeen'] as String)
+        : null,
+    isOnline: false, // 初始加载默认离线
   );
 
   /// 从 mDNS 发现创建设备
