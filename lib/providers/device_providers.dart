@@ -118,44 +118,128 @@ final wledApiProvider = Provider<WledApiService?>((ref) {
   return baseUrl != null ? WledApiService(baseUrl: baseUrl) : null;
 });
 
+/// 当前聚焦设备的 WebSocket 服务
+final wledWebSocketProvider = Provider<WledWebSocketService?>((ref) {
+  final device = ref.watch(currentDeviceProvider);
+  if (device == null) return null;
+  final ws = WledWebSocketService(host: device.ip, port: device.port);
+  ref.onDispose(() => ws.dispose());
+  return ws;
+});
+
 /// 当前聚焦设备的状态
 final deviceStateProvider =
     StateNotifierProvider<DeviceStateNotifier, AsyncValue<WledState>>((ref) {
       final api = ref.watch(wledApiProvider);
-      return DeviceStateNotifier(api, ref);
+      final ws = ref.watch(wledWebSocketProvider);
+      return DeviceStateNotifier(api, ref, webSocket: ws);
     });
 
 /// ！！关键：设备列表卡片使用的 Family Provider ！！
+/// 现已全面接入 WebSocket 实时通信 + HTTP 轮询降级
 final deviceFamilyStateProvider = StateNotifierProvider.family
     .autoDispose<DeviceStateNotifier, AsyncValue<WledState>, WledDevice>((
       ref,
       device,
     ) {
       final api = WledApiService(baseUrl: device.baseUrl);
-      ref.onDispose(() => api.dispose());
-      return DeviceStateNotifier(api, ref);
+      final ws = WledWebSocketService(host: device.ip, port: device.port);
+
+      ref.onDispose(() {
+        api.dispose();
+        ws.dispose();
+      });
+
+      return DeviceStateNotifier(api, ref, webSocket: ws);
     });
 
 class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   final WledApiService? _api;
   final Ref _ref;
+  final WledWebSocketService? _ws;
+
   Timer? _refreshTimer;
+  StreamSubscription? _wsStateSubscription;
+  StreamSubscription? _wsConnectionSubscription;
   DateTime _lastUserActionTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   static const _pollInterval = Duration(seconds: 5);
   static const _protectionSeconds = 8;
   int _failureCount = 0;
+  bool _wsConnected = false;
 
-  DeviceStateNotifier(this._api, this._ref)
-    : super(const AsyncValue.loading()) {
+  DeviceStateNotifier(this._api, this._ref, {WledWebSocketService? webSocket})
+    : _ws = webSocket,
+      super(const AsyncValue.loading()) {
     if (_api != null) {
-      _startPolling();
+      if (_ws != null) {
+        _initWebSocket();
+      } else {
+        _startPolling();
+      }
     }
   }
 
+  // ===========================================================================
+  // WebSocket
+  // ===========================================================================
+
+  void _initWebSocket() {
+    final ws = _ws;
+    if (ws == null) return;
+
+    // 先启动 HTTP 轮询获取初始状态，WS 连接成功后停止
+    _startPolling();
+
+    // 监听 WS 状态推送
+    _wsStateSubscription = ws.stateStream.listen((wsState) {
+      if (!mounted) return;
+      if (DateTime.now().difference(_lastUserActionTime).inSeconds <
+          _protectionSeconds) {
+        return; // 用户操作保护期内忽略 WS 推送
+      }
+      state = AsyncValue.data(wsState);
+      _failureCount = 0;
+
+      // 更新在线状态
+      final realName = wsState.info.name;
+      _updateOnlineStatus(true, realName: realName);
+    });
+
+    // 监听 WS 连接状态
+    _wsConnectionSubscription = ws.connectionStream.listen((connState) {
+      if (!mounted) return;
+      final wasConnected = _wsConnected;
+      _wsConnected = connState == WsConnectionState.connected;
+
+      if (_wsConnected && !wasConnected) {
+        // WS 连接成功 → 停止 HTTP 轮询
+        debugPrint('[DeviceState] WS connected, stopping HTTP polling');
+        _stopPolling();
+      } else if (!_wsConnected && wasConnected) {
+        // WS 断连 → 恢复 HTTP 轮询
+        debugPrint('[DeviceState] WS disconnected, resuming HTTP polling');
+        _startPolling();
+      }
+    });
+
+    // 发起 WS 连接
+    ws.connect();
+  }
+
+  // ===========================================================================
+  // HTTP 轮询（降级方案）
+  // ===========================================================================
+
   void _startPolling() {
+    _stopPolling();
     _fetchState();
     _refreshTimer = Timer.periodic(_pollInterval, (_) => _fetchState());
+  }
+
+  void _stopPolling() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
   }
 
   Future<void> _fetchState() async {
@@ -172,15 +256,7 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
       state = AsyncValue.data(newState);
       _failureCount = 0;
 
-      final realName = newState.info.name;
-      final ip = _api.baseUrl.replaceAll('http://', '').split(':').first;
-      _ref
-          .read(deviceListProvider.notifier)
-          .updateOnlineStatus(
-            ip.replaceAll('.', '_'),
-            true,
-            realName: realName,
-          );
+      _updateOnlineStatus(true, realName: newState.info.name);
     } catch (e, st) {
       if (!mounted) return;
       if (++_failureCount > 2) {
@@ -193,7 +269,26 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
     }
   }
 
+  void _updateOnlineStatus(bool isOnline, {String? realName}) {
+    if (_api == null) return;
+    final ip = _api.baseUrl.replaceAll('http://', '').split(':').first;
+    _ref
+        .read(deviceListProvider.notifier)
+        .updateOnlineStatus(
+          ip.replaceAll('.', '_'),
+          isOnline,
+          realName: realName,
+        );
+  }
+
+  // ===========================================================================
+  // 公共 API
+  // ===========================================================================
+
   Future<void> refresh() => _fetchState();
+
+  /// 是否通过 WebSocket 连接
+  bool get isWebSocketConnected => _wsConnected;
 
   Future<void> optimisticUpdate(
     WledState Function(WledState) updater,
@@ -204,6 +299,7 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
     _lastUserActionTime = DateTime.now();
     state = AsyncValue.data(updater(current));
     try {
+      // 优先通过 WebSocket 发送（如果已连接且有 payload）
       await apiCall();
       _lastUserActionTime = DateTime.now();
     } catch (_) {}
@@ -211,7 +307,9 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _stopPolling();
+    _wsStateSubscription?.cancel();
+    _wsConnectionSubscription?.cancel();
     super.dispose();
   }
 }

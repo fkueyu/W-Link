@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-03-01
+
+### Added / 新增
+
+- **WebSocket**: 全面接入 WebSocket 实时通信，实现设备状态无延迟同步。
+  - **WebSocket**：设备控制页及设备列表页全面接入 WebSocket，操作响应更快速，并且支持多端状态瞬间同步。
+
+### Optimized / 优化
+
+- **Connection Mechanism**: 增强连接机制，并支持 HTTP 无缝降级。
+  - **连接机制**：增加 WebSocket 指数退避重连与 Ping 保活机制。当 WebSocket 不可用时，能够无缝、无感地降级恢复为 HTTP 轮询。
+  - **iOS Build**: 修复并清理了 iOS 构建配置中 `sharedPreferencesProvider` 的命名冲突。
+
 ## [2.2.0] - 2026-02-02
 
 ### Optimized / 优化
