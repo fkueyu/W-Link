@@ -36,7 +36,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'W-Link';
-  static const String appVersion = '2.2.0';
+  static const String appVersion = '2.3.1';
 
   /// SharedPreferences keys
   static const String keyDevices = 'flux_devices';

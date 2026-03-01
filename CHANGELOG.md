@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.1] - 2026-03-01
+
+### Optimized / 优化
+
+- **macOS**：macOS 桌面版优化，适配窗口大小与交互体验。
+- **iPad**：优化 iPad 双栏布局与响应式适配。
+
 ## [2.3.0] - 2026-03-01
 
 ### Added / 新增
