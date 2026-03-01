@@ -3,3 +3,4 @@ export 'constants.dart';
 export 'extensions.dart';
 export 'l10n.dart';
 export 'effect_translations.dart';
+export 'platform_utils.dart';

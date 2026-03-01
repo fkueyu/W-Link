@@ -22,8 +22,13 @@ import 'schedule_screen.dart';
 /// 设备控制中心 - 核心交互页面
 class DeviceControlScreen extends ConsumerStatefulWidget {
   final WledDevice device;
+  final bool embedded;
 
-  const DeviceControlScreen({super.key, required this.device});
+  const DeviceControlScreen({
+    super.key,
+    required this.device,
+    this.embedded = false,
+  });
 
   @override
   ConsumerState<DeviceControlScreen> createState() =>
@@ -76,86 +81,89 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
               ),
             ),
 
-            // Top Glassy Navigation Bar
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: ClipRRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    height: 64 + MediaQuery.of(context).padding.top,
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF000000).withValues(
-                              alpha: 0.4,
-                            ) // Deeper glass
-                          : Colors.white.withValues(alpha: 0.2),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.05),
-                          width: 0.5,
+            // Top Glassy Navigation Bar (嵌入模式下隐藏)
+            if (!widget.embedded)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      height: 64 + MediaQuery.of(context).padding.top,
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF000000).withValues(
+                                alpha: 0.4,
+                              ) // Deeper glass
+                            : Colors.white.withValues(alpha: 0.2),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.05),
+                            width: 0.5,
+                          ),
                         ),
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        BouncyButton(
-                          onTap: () => Navigator.pop(context),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.arrow_back_ios_new_rounded,
-                                  size: 20,
-                                  color: FluxTheme.primary,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  l10n.devices,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          BouncyButton(
+                            onTap: () => Navigator.pop(context),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.arrow_back_ios_new_rounded,
+                                    size: 20,
                                     color: FluxTheme.primary,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    l10n.devices,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: FluxTheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        BouncyButton(
-                          onTap: () => _showSettingsSheet(
-                            context,
-                            stateAsync.valueOrNull,
-                            api,
-                          ),
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 16),
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: FluxTheme.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
+                          BouncyButton(
+                            onTap: () => _showSettingsSheet(
+                              context,
+                              stateAsync.valueOrNull,
+                              api,
                             ),
-                            child: const Icon(
-                              Icons.tune_rounded,
-                              color: FluxTheme.primary,
-                              size: 22,
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 16),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: FluxTheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.tune_rounded,
+                                color: FluxTheme.primary,
+                                size: 22,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -227,59 +235,64 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
         : FluxTheme.primary;
     final isOn = state.on;
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        const SliverToBoxAdapter(
-          child: SizedBox(height: 80),
-        ), // Space for glass bar
-        // 1. Unified Control Hero
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildControlHero(
-              context,
-              currentDevice,
-              state,
-              api,
-              primaryColor,
-              isOn,
-              isDark,
-              l10n,
-            ),
-          ),
-        ),
-
-        // 2. Quick Actions Section
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Text(
-              l10n.settings.toUpperCase(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.35)
-                    : Colors.black38,
-                letterSpacing: 1.5,
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 80),
+            ), // Space for glass bar
+            // 1. Unified Control Hero
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _buildControlHero(
+                  context,
+                  currentDevice,
+                  state,
+                  api,
+                  primaryColor,
+                  isOn,
+                  isDark,
+                  l10n,
+                ),
               ),
             ),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: _buildQuickActionsGrid(state, api, l10n, isDark),
-        ),
 
-        // 3. Effect Parameters Section
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
-            child: _buildContextualControls(state, api, l10n, isDark),
-          ),
+            // 2. Quick Actions Section
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Text(
+                  l10n.settings.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.35)
+                        : Colors.black38,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: _buildQuickActionsGrid(state, api, l10n, isDark),
+            ),
+
+            // 3. Effect Parameters Section
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
+                child: _buildContextualControls(state, api, l10n, isDark),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -533,7 +546,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
   ) {
     return BouncyButton(
       onTap: () {
-        HapticFeedback.heavyImpact();
+        PlatformUtils.hapticHeavy();
         ref
             .read(deviceStateProvider.notifier)
             .optimisticUpdate(

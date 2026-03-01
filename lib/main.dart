@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/core.dart';
-import 'screens/screens.dart';
+
+import 'screens/adaptive_shell.dart';
 
 import 'providers/providers.dart';
 
@@ -34,7 +35,7 @@ class FluxApp extends ConsumerWidget {
       darkTheme: FluxTheme.darkTheme,
       themeMode: settingsNotifier.themeMode,
       locale: settingsNotifier.locale,
-      home: const DeviceListScreen(),
+      home: const AdaptiveShell(),
     );
   }
 }

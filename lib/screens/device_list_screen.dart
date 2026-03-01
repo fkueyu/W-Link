@@ -13,18 +13,35 @@ import 'settings_screen.dart';
 
 /// 设备列表页 - 简洁首页
 class DeviceListScreen extends ConsumerWidget {
-  const DeviceListScreen({super.key});
+  /// 双栏模式回调：选择设备时触发，不走 push 导航
+  final void Function(WledDevice device)? onDeviceSelected;
+
+  /// 双栏模式下当前选中的设备 ID（用于高亮）
+  final String? selectedDeviceId;
+
+  const DeviceListScreen({
+    super.key,
+    this.onDeviceSelected,
+    this.selectedDeviceId,
+  });
+
+  /// 是否处于双栏嵌入模式
+  bool get _isEmbedded => onDeviceSelected != null;
 
   void _navigateToControl(
     BuildContext context,
     WidgetRef ref,
     WledDevice device,
   ) {
-    ref.read(currentDeviceIdProvider.notifier).state = device.id;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => DeviceControlScreen(device: device)),
-    );
+    if (onDeviceSelected != null) {
+      onDeviceSelected!(device);
+    } else {
+      ref.read(currentDeviceIdProvider.notifier).state = device.id;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => DeviceControlScreen(device: device)),
+      );
+    }
   }
 
   void _navigateToDiscovery(BuildContext context) {
@@ -333,26 +350,44 @@ class DeviceListScreen extends ConsumerWidget {
               else
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final device = devices[index];
-                      return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: DeviceCard(
-                              device: device,
-                              onTap: () =>
-                                  _navigateToControl(context, ref, device),
-                              onDelete: () {
-                                ref
-                                    .read(deviceListProvider.notifier)
-                                    .removeDevice(device.id);
-                              },
-                            ),
-                          )
-                          .animate()
-                          .fadeIn(delay: (index * 100).ms)
-                          .slideX(begin: 0.1);
-                    }, childCount: devices.length),
+                  sliver: SliverLayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.crossAxisExtent;
+                      final crossAxisCount = width > 900
+                          ? 3
+                          : width > 600
+                          ? 2
+                          : 1;
+                      // 根据实际卡片宽度动态计算宽高比，确保最小高度 200px
+                      final cardWidth =
+                          (width - 16 * 2 - 12 * (crossAxisCount - 1)) /
+                          crossAxisCount;
+                      final aspectRatio = (cardWidth / 200).clamp(1.0, 2.2);
+                      return SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 4,
+                          childAspectRatio: aspectRatio,
+                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final device = devices[index];
+                          return DeviceCard(
+                                device: device,
+                                onTap: () =>
+                                    _navigateToControl(context, ref, device),
+                                onDelete: () {
+                                  ref
+                                      .read(deviceListProvider.notifier)
+                                      .removeDevice(device.id);
+                                },
+                              )
+                              .animate()
+                              .fadeIn(delay: (index * 100).ms)
+                              .slideX(begin: 0.1);
+                        }, childCount: devices.length),
+                      );
+                    },
                   ),
                 ),
             ],
@@ -360,64 +395,70 @@ class DeviceListScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton:
-          BouncyButton(
-                onTap: () => _navigateToDiscovery(context),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(32),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.white.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(
+      floatingActionButton: _isEmbedded
+          ? null
+          : BouncyButton(
+                  onTap: () => _navigateToDiscovery(context),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
                           color: Theme.of(context).brightness == Brightness.dark
                               ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.8),
-                          width: 0.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
+                              : Colors.white.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(32),
+                          border: Border.all(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.white.withValues(alpha: 0.8),
+                            width: 0.5,
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.add_rounded,
-                            color: FluxTheme.primary,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            l10n.addDevice,
-                            style: const TextStyle(
-                              color: FluxTheme.primary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                              letterSpacing: -0.3,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.add_rounded,
+                              color: FluxTheme.primary,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              l10n.addDevice,
+                              style: const TextStyle(
+                                color: FluxTheme.primary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                )
+                .animate()
+                .fadeIn(delay: 600.ms)
+                .slideY(
+                  begin: 0.5,
+                  curve: Curves.easeOutBack,
+                  duration: 800.ms,
                 ),
-              )
-              .animate()
-              .fadeIn(delay: 600.ms)
-              .slideY(begin: 0.5, curve: Curves.easeOutBack, duration: 800.ms),
     );
   }
 }
