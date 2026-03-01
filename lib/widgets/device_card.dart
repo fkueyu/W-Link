@@ -276,7 +276,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         ),
       ],
     ).then((value) {
-      if (value == 'delete') {
+      if (value == 'delete' && context.mounted) {
         _showDeleteConfirm(context, ref, isDark);
       }
     });
