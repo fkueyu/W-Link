@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
+import 'wled_websocket_service.dart';
 
 /// WLED API 服务
 /// 负责与 WLED 设备的 HTTP 通信
@@ -9,10 +10,12 @@ class WledApiService {
   final String baseUrl;
   final http.Client _client;
   final Duration timeout;
+  final WledWebSocketService? ws;
 
   WledApiService({
     required this.baseUrl,
     http.Client? client,
+    this.ws,
     this.timeout = const Duration(seconds: 5),
   }) : _client = client ?? http.Client();
 
@@ -81,6 +84,16 @@ class WledApiService {
   /// 发送状态更新
   /// [payload] 是部分状态对象，如 {"on": true, "bri": 255}
   Future<WledState?> setState(Map<String, dynamic> payload) async {
+    // 优先通过 WebSocket 发送（如果已连接）
+    if (ws != null && ws!.isConnected) {
+      // 强制添加 'v': true 以要求 WLED 通过 WebSocket 广播新的全局状态
+      // 否则 WebSocket 更新默认是静默的，这会导致客户端 UI 同步不到其他参数的附属变化
+      final wsPayload = Map<String, dynamic>.from(payload);
+      wsPayload['v'] = true;
+      ws!.sendState(wsPayload);
+      return null; // WebSocket 为单向推送，不直接返回状态
+    }
+
     final response = await _post('/json/state', payload);
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -238,6 +251,14 @@ class WledApiService {
     String? n,
     int? startY,
     int? stopY,
+    int? fx,
+    int? pal,
+    int? sx,
+    int? ix,
+    int? c1,
+    int? c2,
+    int? c3,
+    List<List<int>>? col,
     bool? rev,
     bool? mi,
     bool? rY,
@@ -262,6 +283,14 @@ class WledApiService {
     if (n != null) seg['n'] = n;
     if (startY != null) seg['startY'] = startY;
     if (stopY != null) seg['stopY'] = stopY;
+    if (fx != null) seg['fx'] = fx;
+    if (pal != null) seg['pal'] = pal;
+    if (sx != null) seg['sx'] = sx;
+    if (ix != null) seg['ix'] = ix;
+    if (c1 != null) seg['c1'] = c1;
+    if (c2 != null) seg['c2'] = c2;
+    if (c3 != null) seg['c3'] = c3;
+    if (col != null) seg['col'] = col;
     if (rev != null) seg['rev'] = rev;
     if (mi != null) seg['mi'] = mi;
     if (rY != null) seg['rY'] = rY;
@@ -279,6 +308,13 @@ class WledApiService {
     return setState({
       'seg': [seg],
     });
+  }
+
+  /// 批量更新多个分段的属性 (用于一并进行拆分和新建)
+  Future<WledState?> updateMultipleSegments(
+    List<Map<String, dynamic>> segments,
+  ) {
+    return setState({'seg': segments});
   }
 
   // ============================================================================

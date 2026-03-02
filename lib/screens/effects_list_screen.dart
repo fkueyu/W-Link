@@ -9,7 +9,8 @@ import '../widgets/widgets.dart';
 
 /// 效果列表页面
 class EffectsListScreen extends ConsumerStatefulWidget {
-  const EffectsListScreen({super.key});
+  final int segmentId;
+  const EffectsListScreen({super.key, this.segmentId = 0});
 
   @override
   ConsumerState<EffectsListScreen> createState() => _EffectsListScreenState();
@@ -29,9 +30,9 @@ class _EffectsListScreenState extends ConsumerState<EffectsListScreen> {
     final l10n = ref.watch(l10nProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final currentFx = stateAsync.valueOrNull?.seg.isNotEmpty == true
-        ? stateAsync.valueOrNull!.seg.first.fx
-        : 0;
+    final seg = stateAsync.valueOrNull?.seg ?? [];
+    final targetSeg = seg.where((s) => s.id == widget.segmentId).firstOrNull;
+    final currentFx = targetSeg?.fx ?? 0;
 
     return Scaffold(
       body: AnimatedBackground(
@@ -226,17 +227,26 @@ class _EffectsListScreenState extends ConsumerState<EffectsListScreen> {
                                     isSelected: isSelected,
                                     onTap: () {
                                       HapticFeedback.selectionClick();
+                                      final sid = widget.segmentId;
                                       ref
                                           .read(deviceStateProvider.notifier)
-                                          .optimisticUpdate((s) {
-                                            if (s.seg.isEmpty) return s;
-                                            final newSeg = s.seg.first.copyWith(
+                                          .optimisticUpdate(
+                                            (s) => s.copyWith(
+                                              seg: s.seg
+                                                  .map(
+                                                    (seg) => seg.id == sid
+                                                        ? seg.copyWith(
+                                                            fx: fxIdx,
+                                                          )
+                                                        : seg,
+                                                  )
+                                                  .toList(),
+                                            ),
+                                            () => api!.setSegmentState(
+                                              sid,
                                               fx: fxIdx,
-                                            );
-                                            return s.copyWith(
-                                              seg: [newSeg, ...s.seg.skip(1)],
-                                            );
-                                          }, () => api!.setEffect(fxIdx));
+                                            ),
+                                          );
                                       Navigator.pop(context);
                                     },
                                   )

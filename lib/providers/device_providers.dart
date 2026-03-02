@@ -115,7 +115,8 @@ final currentDeviceProvider = Provider<WledDevice?>((ref) {
 
 final wledApiProvider = Provider<WledApiService?>((ref) {
   final baseUrl = ref.watch(currentDeviceProvider.select((d) => d?.baseUrl));
-  return baseUrl != null ? WledApiService(baseUrl: baseUrl) : null;
+  final ws = ref.watch(wledWebSocketProvider);
+  return baseUrl != null ? WledApiService(baseUrl: baseUrl, ws: ws) : null;
 });
 
 /// 当前聚焦设备的 WebSocket 服务
@@ -142,8 +143,8 @@ final deviceFamilyStateProvider = StateNotifierProvider.family
       ref,
       device,
     ) {
-      final api = WledApiService(baseUrl: device.baseUrl);
       final ws = WledWebSocketService(host: device.ip, port: device.port);
+      final api = WledApiService(baseUrl: device.baseUrl, ws: ws);
 
       ref.onDispose(() {
         api.dispose();
@@ -286,6 +287,12 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   // ===========================================================================
 
   Future<void> refresh() => _fetchState();
+
+  /// 强制刷新，跳过保护窗口（用于删除分段等结构变更操作）
+  Future<void> forceRefresh() {
+    _lastUserActionTime = DateTime.fromMillisecondsSinceEpoch(0);
+    return _fetchState();
+  }
 
   /// 是否通过 WebSocket 连接
   bool get isWebSocketConnected => _wsConnected;

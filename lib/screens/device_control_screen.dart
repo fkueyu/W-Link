@@ -950,26 +950,59 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       ],
     );
 
-    // Map segments values to sliders
+    // Map segments values to sliders and their optimistic update functions
     final configs = [
-      (state.seg.first.sx.toDouble(), (v) => api?.setEffectSpeed(v.round())),
+      (
+        state.seg.first.sx.toDouble(),
+        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
+          if (s.seg.isEmpty) return s;
+          final segs = s.seg.toList();
+          segs[0] = segs[0].copyWith(sx: v.round());
+          return s.copyWith(seg: segs);
+        }, () => api!.setEffectSpeed(v.round())),
+      ),
       (
         state.seg.first.ix.toDouble(),
-        (v) => api?.setEffectIntensity(v.round()),
+        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
+          if (s.seg.isEmpty) return s;
+          final segs = s.seg.toList();
+          segs[0] = segs[0].copyWith(ix: v.round());
+          return s.copyWith(seg: segs);
+        }, () => api!.setEffectIntensity(v.round())),
       ),
       (
         state.seg.first.c1.toDouble(),
-        (v) => api?.setEffectCustom(1, v.round()),
+        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
+          if (s.seg.isEmpty) return s;
+          final segs = s.seg.toList();
+          segs[0] = segs[0].copyWith(c1: v.round());
+          return s.copyWith(seg: segs);
+        }, () => api!.setEffectCustom(1, v.round())),
       ),
       (
         state.seg.first.c2.toDouble(),
-        (v) => api?.setEffectCustom(2, v.round()),
+        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
+          if (s.seg.isEmpty) return s;
+          final segs = s.seg.toList();
+          segs[0] = segs[0].copyWith(c2: v.round());
+          return s.copyWith(seg: segs);
+        }, () => api!.setEffectCustom(2, v.round())),
       ),
       (
         state.seg.first.c3.toDouble(),
-        (v) => api?.setEffectCustom(3, v.round()),
+        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
+          if (s.seg.isEmpty) return s;
+          final segs = s.seg.toList();
+          segs[0] = segs[0].copyWith(c3: v.round());
+          return s.copyWith(seg: segs);
+        }, () => api!.setEffectCustom(3, v.round())),
       ),
     ];
+
+    // Effect 0 is always Pure Solid Color. None of these parameters apply.
+    if (currentFx == 0) {
+      return const SizedBox.shrink();
+    }
 
     bool hasVisible = labels.any((l) => l.isNotEmpty);
     if (!hasVisible) {
@@ -1013,7 +1046,6 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   onChangeEnd: (v) {
                     HapticFeedback.selectionClick();
                     configs[i].$2(v);
-                    ref.read(deviceStateProvider.notifier).refresh();
                   },
                 ),
               );
@@ -1036,12 +1068,23 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       builder: (_) => ColorPickerSheet(
         initialColor: current,
         onColorChanged: (color) {
-          api?.setColor([
+          final rgb = [
             (color.r * 255).round(),
             (color.g * 255).round(),
             (color.b * 255).round(),
-          ]);
-          ref.read(deviceStateProvider.notifier).refresh();
+          ];
+          ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
+            if (s.seg.isEmpty) return s;
+            final segs = s.seg.toList();
+            final cols = segs[0].col.toList();
+            if (cols.isNotEmpty) {
+              cols[0] = rgb;
+            } else {
+              cols.add(rgb);
+            }
+            segs[0] = segs[0].copyWith(col: cols);
+            return s.copyWith(seg: segs);
+          }, () => api!.setColor(rgb));
         },
       ),
     );

@@ -72,9 +72,14 @@ class _SmartSliderState extends State<SmartSlider> {
     // 调用外部回调
     widget.onChangeEnd?.call(value);
 
-    // 延迟清除拖拽状态
-    setState(() {
-      _dragValue = null;
+    // 等待一帧让 Provider 状态传播到父级 Widget 再释放拖拽锁定
+    // 避免松手瞬间因 widget.value 还是旧值而导致滑块"弹回"
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _dragValue = null;
+        });
+      }
     });
   }
 

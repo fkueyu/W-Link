@@ -11,7 +11,8 @@ import 'custom_palette_editor_screen.dart';
 
 /// 调色板列表页面
 class PalettesListScreen extends ConsumerStatefulWidget {
-  const PalettesListScreen({super.key});
+  final int segmentId;
+  const PalettesListScreen({super.key, this.segmentId = 0});
 
   @override
   ConsumerState<PalettesListScreen> createState() => _PalettesListScreenState();
@@ -31,9 +32,9 @@ class _PalettesListScreenState extends ConsumerState<PalettesListScreen> {
     final l10n = ref.watch(l10nProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final currentPal = stateAsync.valueOrNull?.seg.isNotEmpty == true
-        ? stateAsync.valueOrNull!.seg.first.pal
-        : 0;
+    final seg = stateAsync.valueOrNull?.seg ?? [];
+    final targetSeg = seg.where((s) => s.id == widget.segmentId).firstOrNull;
+    final currentPal = targetSeg?.pal ?? 0;
 
     return Scaffold(
       body: AnimatedBackground(
@@ -228,17 +229,26 @@ class _PalettesListScreenState extends ConsumerState<PalettesListScreen> {
                                     isSelected: isSelected,
                                     onTap: () {
                                       HapticFeedback.selectionClick();
+                                      final sid = widget.segmentId;
                                       ref
                                           .read(deviceStateProvider.notifier)
-                                          .optimisticUpdate((s) {
-                                            if (s.seg.isEmpty) return s;
-                                            final newSeg = s.seg.first.copyWith(
+                                          .optimisticUpdate(
+                                            (s) => s.copyWith(
+                                              seg: s.seg
+                                                  .map(
+                                                    (seg) => seg.id == sid
+                                                        ? seg.copyWith(
+                                                            pal: palIdx,
+                                                          )
+                                                        : seg,
+                                                  )
+                                                  .toList(),
+                                            ),
+                                            () => api!.setSegmentState(
+                                              sid,
                                               pal: palIdx,
-                                            );
-                                            return s.copyWith(
-                                              seg: [newSeg, ...s.seg.skip(1)],
-                                            );
-                                          }, () => api!.setPalette(palIdx));
+                                            ),
+                                          );
                                       Navigator.pop(context);
                                     },
                                   )
