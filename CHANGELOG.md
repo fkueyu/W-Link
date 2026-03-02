@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-03-02
+
+### Added / 新增
+
+- **Per-Segment Configuration**: Support independent config of brightness, color, effect, and palette for each segment.
+  - **分段独立配置**：支持对每个分段独立配置亮度、颜色、效果和调色板。
+- **Smart Matrix**: Added 2D smart segment coordinate handling for Matrix devices.
+  - **智能矩阵**：增强了对于矩阵设备的 2D 智能分段裁剪与合并能力。
+
+### Optimized / 优化
+
+- **Device Sync**: Reduced websocket race condition issues for smoother multi-parameter sliding.
+  - **状态同步**：优化了 WebSocket 状态同步与乐观更新，滑动操作更丝滑无回弹。
+
 ## [2.3.1] - 2026-03-01
 
 ### Optimized / 优化
