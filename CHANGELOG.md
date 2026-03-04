@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.3] - 2026-03-04
+
+### Fixed / 修复
+
+- **Preset Selection**: 修复选择预设后，切换效果、调色板、颜色或亮度时，预设选中状态不会自动清除的问题。
+  - Fixed preset selection not clearing when changing effects, palettes, colors, or brightness.
+- **Device Control (Android)**: 修复 Android 设备详情页无法控制开关的问题，将控制指令从 WebSocket 切换为更可靠的 HTTP API。
+  - Fixed device control on Android detail page by switching control commands from WebSocket to reliable HTTP API.
+
+### Optimized / 优化
+
+- **Multi-Device Sync**: 增强多端状态同步，API 控制指令现在会强制要求 WLED 广播状态变化，确保多客户端实时同步。
+  - Enhanced multi-device sync by forcing WLED to broadcast state changes, ensuring real-time synchronization across clients.
+- **Connection Stability**: WebSocket 连接成功后保留慢速 HTTP 轮询（15 秒）作为兜底，防止 WebSocket 丢包导致状态不同步。
+  - Added slow HTTP polling (15s) as fallback when WebSocket is connected, preventing sync loss from unreliable WebSocket.
+- **Provider Stability**: 优化 Provider 依赖链，防止设备元数据更新（如 `lastSeen`）导致 WebSocket 和状态管理器不必要的重建。
+  - Optimized provider dependency chain to prevent unnecessary rebuilds from metadata updates.
+
 ## [2.4.2] - 2026-03-04
 
 ### Fixed / 修复

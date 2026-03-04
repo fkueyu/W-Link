@@ -234,6 +234,7 @@ class _PalettesListScreenState extends ConsumerState<PalettesListScreen> {
                                           .read(deviceStateProvider.notifier)
                                           .optimisticUpdate(
                                             (s) => s.copyWith(
+                                              ps: -1, // Clear preset selection when a palette is chosen
                                               seg: s.seg
                                                   .map(
                                                     (seg) => seg.id == sid

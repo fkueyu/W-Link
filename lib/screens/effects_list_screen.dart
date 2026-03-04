@@ -232,6 +232,7 @@ class _EffectsListScreenState extends ConsumerState<EffectsListScreen> {
                                           .read(deviceStateProvider.notifier)
                                           .optimisticUpdate(
                                             (s) => s.copyWith(
+                                              ps: -1, // Clear preset selection when an effect is chosen
                                               seg: s.seg
                                                   .map(
                                                     (seg) => seg.id == sid

@@ -549,7 +549,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
         ref
             .read(deviceStateProvider.notifier)
             .optimisticUpdate(
-              (s) => s.copyWith(on: !isOn),
+              (s) => s.copyWith(ps: -1, on: !isOn),
               () => api!.setOn(!isOn),
             );
       },
@@ -665,7 +665,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                 ref
                     .read(deviceStateProvider.notifier)
                     .optimisticUpdate(
-                      (s) => s.copyWith(on: bri > 0, bri: bri),
+                      (s) => s.copyWith(ps: -1, on: bri > 0, bri: bri),
                       () => api!.setState({'on': bri > 0, 'bri': bri}),
                     );
               },
@@ -957,7 +957,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           if (s.seg.isEmpty) return s;
           final segs = s.seg.toList();
           segs[0] = segs[0].copyWith(sx: v.round());
-          return s.copyWith(seg: segs);
+          return s.copyWith(ps: -1, seg: segs);
         }, () => api!.setEffectSpeed(v.round())),
       ),
       (
@@ -966,7 +966,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           if (s.seg.isEmpty) return s;
           final segs = s.seg.toList();
           segs[0] = segs[0].copyWith(ix: v.round());
-          return s.copyWith(seg: segs);
+          return s.copyWith(ps: -1, seg: segs);
         }, () => api!.setEffectIntensity(v.round())),
       ),
       (
@@ -975,7 +975,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           if (s.seg.isEmpty) return s;
           final segs = s.seg.toList();
           segs[0] = segs[0].copyWith(c1: v.round());
-          return s.copyWith(seg: segs);
+          return s.copyWith(ps: -1, seg: segs);
         }, () => api!.setEffectCustom(1, v.round())),
       ),
       (
@@ -984,7 +984,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           if (s.seg.isEmpty) return s;
           final segs = s.seg.toList();
           segs[0] = segs[0].copyWith(c2: v.round());
-          return s.copyWith(seg: segs);
+          return s.copyWith(ps: -1, seg: segs);
         }, () => api!.setEffectCustom(2, v.round())),
       ),
       (
@@ -993,7 +993,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           if (s.seg.isEmpty) return s;
           final segs = s.seg.toList();
           segs[0] = segs[0].copyWith(c3: v.round());
-          return s.copyWith(seg: segs);
+          return s.copyWith(ps: -1, seg: segs);
         }, () => api!.setEffectCustom(3, v.round())),
       ),
     ];
@@ -1082,7 +1082,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
               cols.add(rgb);
             }
             segs[0] = segs[0].copyWith(col: cols);
-            return s.copyWith(seg: segs);
+            return s.copyWith(ps: -1, seg: segs);
           }, () => api!.setColor(rgb));
         },
       ),

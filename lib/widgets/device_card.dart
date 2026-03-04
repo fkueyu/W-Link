@@ -336,14 +336,17 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         final notifier = ref.read(
           deviceFamilyStateProvider(widget.device.id).notifier,
         );
-        notifier.optimisticUpdate((s) => s.copyWith(on: !isOn), () async {
-          final api = WledApiService(baseUrl: widget.device.baseUrl);
-          try {
-            return await api.setOn(!isOn);
-          } finally {
-            api.dispose();
-          }
-        });
+        notifier.optimisticUpdate(
+          (s) => s.copyWith(ps: -1, on: !isOn),
+          () async {
+            final api = WledApiService(baseUrl: widget.device.baseUrl);
+            try {
+              return await api.setOn(!isOn);
+            } finally {
+              api.dispose();
+            }
+          },
+        );
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -449,7 +452,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                 ref
                     .read(deviceFamilyStateProvider(widget.device.id).notifier)
                     .optimisticUpdate(
-                      (s) => s.copyWith(on: bri > 0, bri: bri),
+                      (s) => s.copyWith(ps: -1, on: bri > 0, bri: bri),
                       () async {
                         final api = WledApiService(
                           baseUrl: widget.device.baseUrl,

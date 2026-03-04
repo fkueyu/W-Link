@@ -120,15 +120,20 @@ final currentDeviceProvider = Provider<WledDevice?>((ref) {
 
 final wledApiProvider = Provider<WledApiService?>((ref) {
   final baseUrl = ref.watch(currentDeviceProvider.select((d) => d?.baseUrl));
-  final ws = ref.watch(wledWebSocketProvider);
-  return baseUrl != null ? WledApiService(baseUrl: baseUrl, ws: ws) : null;
+  if (baseUrl == null) return null;
+  final api = WledApiService(baseUrl: baseUrl);
+  ref.onDispose(() => api.dispose());
+  return api;
 });
 
 /// 当前聚焦设备的 WebSocket 服务
 final wledWebSocketProvider = Provider<WledWebSocketService?>((ref) {
-  final device = ref.watch(currentDeviceProvider);
-  if (device == null) return null;
-  final ws = WledWebSocketService(host: device.ip, port: device.port);
+  final ip = ref.watch(currentDeviceProvider.select((d) => d?.ip));
+  final port = ref.watch(currentDeviceProvider.select((d) => d?.port));
+
+  if (ip == null || port == null) return null;
+
+  final ws = WledWebSocketService(host: ip, port: port);
   ref.onDispose(() => ws.dispose());
   return ws;
 });
@@ -138,6 +143,9 @@ final deviceStateProvider =
     StateNotifierProvider<DeviceStateNotifier, AsyncValue<WledState>>((ref) {
       final api = ref.watch(wledApiProvider);
       final ws = ref.watch(wledWebSocketProvider);
+
+      // 注意：这里如果 watch 的 provider 重建，Notifier 也会重建
+      // 目前 wledApiProvider 和 wledWebSocketProvider 已优化为仅在核心参数变化时重建
       return DeviceStateNotifier(api, ref, webSocket: ws);
     });
 
@@ -156,7 +164,7 @@ final deviceFamilyStateProvider = StateNotifierProvider.family
       );
 
       final ws = WledWebSocketService(host: device.ip, port: device.port);
-      final api = WledApiService(baseUrl: device.baseUrl, ws: ws);
+      final api = WledApiService(baseUrl: device.baseUrl);
 
       ref.onDispose(() {
         api.dispose();
@@ -178,6 +186,7 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   DateTime _lastUserActionTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   static const _pollInterval = Duration(seconds: 5);
+  static const _slowPollInterval = Duration(seconds: 15);
   static const _protectionSeconds = 8;
   int _failureCount = 0;
   bool _wsConnected = false;
@@ -236,12 +245,13 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
       _wsConnected = connState == WsConnectionState.connected;
 
       if (_wsConnected && !wasConnected) {
-        // WS 连接成功 → 停止 HTTP 轮询
-        debugPrint('[DeviceState] WS connected, stopping HTTP polling');
-        _stopPolling();
+        // WS 连接成功 → 切换到慢速轮询作为兜底
+        // (某些环境如 Android 模拟器的 WS 接收不可靠)
+        debugPrint('[DeviceState] WS connected, switching to slow polling');
+        _startSlowPolling();
       } else if (!_wsConnected && wasConnected) {
-        // WS 断连 → 恢复 HTTP 轮询
-        debugPrint('[DeviceState] WS disconnected, resuming HTTP polling');
+        // WS 断连 → 恢复快速 HTTP 轮询
+        debugPrint('[DeviceState] WS disconnected, resuming fast HTTP polling');
         _startPolling();
       }
     });
@@ -258,6 +268,11 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
     _stopPolling();
     _fetchState();
     _refreshTimer = Timer.periodic(_pollInterval, (_) => _fetchState());
+  }
+
+  void _startSlowPolling() {
+    _stopPolling();
+    _refreshTimer = Timer.periodic(_slowPollInterval, (_) => _fetchState());
   }
 
   void _stopPolling() {
@@ -326,7 +341,17 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
     final current = state.valueOrNull;
     if (current == null) return;
     _lastUserActionTime = DateTime.now();
-    final newState = updater(current);
+    var newState = updater(current);
+
+    // Automatically clear preset selection when visual state properties are modified
+    if (newState.ps == current.ps && current.ps > 0) {
+      if (newState.on != current.on ||
+          newState.bri != current.bri ||
+          newState.seg != current.seg) {
+        newState = newState.copyWith(ps: -1);
+      }
+    }
+
     state = AsyncValue.data(newState);
 
     // 双向同步
@@ -335,7 +360,9 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
     try {
       await apiCall();
       _lastUserActionTime = DateTime.now();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[DeviceState] Optimistic update API call failed: $e');
+    }
   }
 
   /// 双向同步：detail ↔ family

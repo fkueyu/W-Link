@@ -315,10 +315,10 @@ class DeviceListScreen extends ConsumerWidget {
                             size: 20,
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              '未连接到 Wi-Fi，可能无法控制局域网内的设备',
-                              style: TextStyle(
+                              l10n.noWifiWarning,
+                              style: const TextStyle(
                                 color: Colors.orange,
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -339,12 +339,16 @@ class DeviceListScreen extends ConsumerWidget {
                     icon: isWifiConnected
                         ? Icons.lightbulb_outline
                         : Icons.wifi_off_rounded,
-                    title: isWifiConnected ? l10n.noDevices : "未连接局域网",
+                    title: isWifiConnected
+                        ? l10n.noDevices
+                        : l10n.notConnectedToLan,
                     message: isWifiConnected
-                        ? "点击下方按钮或右下角添加您的第一个 WLED 设备"
-                        : "WLED 设备需要连接在同一 Wi-Fi 环境下才能使用",
+                        ? l10n.addFirstDeviceHint
+                        : l10n.wifiRequiredHint,
                     onAction: () => _navigateToDiscovery(context),
-                    actionLabel: isWifiConnected ? l10n.addDevice : "去连接 Wi-Fi",
+                    actionLabel: isWifiConnected
+                        ? l10n.addDevice
+                        : l10n.goToConnectWifi,
                   ),
                 )
               else

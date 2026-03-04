@@ -7,6 +7,11 @@ abstract class AppStrings {
   String get appTitle;
   String get myDevices;
   String get noDevices;
+  String get noWifiWarning;
+  String get notConnectedToLan;
+  String get addFirstDeviceHint;
+  String get wifiRequiredHint;
+  String get goToConnectWifi;
   String get controllers;
   String get addDevice;
   String get settings;
@@ -193,6 +198,16 @@ class ZhStrings implements AppStrings {
   String get myDevices => '我的设备';
   @override
   String get noDevices => '暂无设备';
+  @override
+  String get noWifiWarning => '未连接到 Wi-Fi，可能无法控制局域网内的设备';
+  @override
+  String get notConnectedToLan => '未连接局域网';
+  @override
+  String get addFirstDeviceHint => '点击下方按钮或右下角添加您的第一个 WLED 设备';
+  @override
+  String get wifiRequiredHint => 'WLED 设备需要连接在同一 Wi-Fi 环境下才能使用';
+  @override
+  String get goToConnectWifi => '去连接 Wi-Fi';
   @override
   String get devices => '设备';
   @override
@@ -539,6 +554,19 @@ class EnStrings implements AppStrings {
   String get myDevices => 'My Devices';
   @override
   String get noDevices => 'No Devices';
+  @override
+  String get noWifiWarning =>
+      'Not connected to Wi-Fi. You may not be able to control devices on the local network.';
+  @override
+  String get notConnectedToLan => 'Not connected to LAN';
+  @override
+  String get addFirstDeviceHint =>
+      'Click the button below or the bottom right corner to add your first WLED device';
+  @override
+  String get wifiRequiredHint =>
+      'WLED devices must be connected to the same Wi-Fi network to be used.';
+  @override
+  String get goToConnectWifi => 'Connect to Wi-Fi';
   @override
   String get devices => 'Devices';
   @override

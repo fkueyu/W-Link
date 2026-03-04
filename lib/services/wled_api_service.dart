@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
-import 'wled_websocket_service.dart';
 
 /// WLED API 服务
 /// 负责与 WLED 设备的 HTTP 通信
@@ -10,12 +10,9 @@ class WledApiService {
   final String baseUrl;
   final http.Client _client;
   final Duration timeout;
-  final WledWebSocketService? ws;
-
   WledApiService({
     required this.baseUrl,
     http.Client? client,
-    this.ws,
     this.timeout = const Duration(seconds: 5),
   }) : _client = client ?? http.Client();
 
@@ -84,17 +81,14 @@ class WledApiService {
   /// 发送状态更新
   /// [payload] 是部分状态对象，如 {"on": true, "bri": 255}
   Future<WledState?> setState(Map<String, dynamic> payload) async {
-    // 优先通过 WebSocket 发送（如果已连接）
-    if (ws != null && ws!.isConnected) {
-      // 强制添加 'v': true 以要求 WLED 通过 WebSocket 广播新的全局状态
-      // 否则 WebSocket 更新默认是静默的，这会导致客户端 UI 同步不到其他参数的附属变化
-      final wsPayload = Map<String, dynamic>.from(payload);
-      wsPayload['v'] = true;
-      ws!.sendState(wsPayload);
-      return null; // WebSocket 为单向推送，不直接返回状态
-    }
+    // 强制使用 HTTP API 发送控制指令，以保证可靠性
+    // (根据规范：控制指令首选 JSON API POST /json/state)
+    // 并且这解决了 Android 模拟器等环境下 WebSocket 发包静默失败或丢包而无法控灯的问题
 
-    final response = await _post('/json/state', payload);
+    final bodyWithVerbosity = Map<String, dynamic>.from(payload);
+    bodyWithVerbosity['v'] = true;
+
+    final response = await _post('/json/state', bodyWithVerbosity);
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       return WledState.fromJson(json);
@@ -410,7 +404,8 @@ class WledApiService {
     try {
       final response = await _get('/json/info');
       return response.statusCode == 200;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[API] Ping failed to $baseUrl: $e');
       return false;
     }
   }
@@ -422,13 +417,22 @@ class WledApiService {
 
   Future<http.Response> _post(String path, Map<String, dynamic> body) async {
     final uri = Uri.parse('$baseUrl$path');
-    return _client
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(timeout);
+    try {
+      final response = await _client
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(timeout);
+      debugPrint(
+        '[API] POST $path to $baseUrl returned ${response.statusCode}',
+      );
+      return response;
+    } catch (e) {
+      debugPrint('[API] POST $path to $baseUrl failed: $e');
+      rethrow;
+    }
   }
 
   void dispose() {
