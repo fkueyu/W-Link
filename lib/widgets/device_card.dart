@@ -400,12 +400,12 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     final percent = (brightness / 255 * 100).round();
 
     return Container(
-      height: 38,
+      height: 44,
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.05)
             : Colors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(19),
+        borderRadius: BorderRadius.circular(22),
       ),
       child: Stack(
         alignment: Alignment.center,
@@ -418,7 +418,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
               child: Container(
                 decoration: BoxDecoration(
                   color: deviceColor.withValues(alpha: isDark ? 0.4 : 0.3),
-                  borderRadius: BorderRadius.circular(19),
+                  borderRadius: BorderRadius.circular(22),
                   gradient: LinearGradient(
                     colors: [
                       deviceColor.withValues(alpha: isDark ? 0.3 : 0.2),
@@ -432,7 +432,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
           // 交互层 (Slider)
           SliderTheme(
             data: SliderThemeData(
-              trackHeight: 38,
+              trackHeight: 44,
               thumbShape: SliderComponentShape.noThumb,
               overlayShape: SliderComponentShape.noOverlay,
               activeTrackColor: Colors.transparent,

@@ -35,6 +35,36 @@ import UIKit
       }
     }
     
+    // App Groups MethodChannel — 同步设备列表供 App Intents 使用
+    if let appGroupsRegistrar = self.registrar(forPlugin: "flux/app_groups") {
+      let appGroupsChannel = FlutterMethodChannel(
+        name: "flux/app_groups",
+        binaryMessenger: appGroupsRegistrar.messenger()
+      )
+      
+      appGroupsChannel.setMethodCallHandler { call, result in
+        switch call.method {
+        case "syncDevices":
+          guard let args = call.arguments as? [String: Any],
+                let devicesJson = args["devices"] as? String else {
+            result(FlutterError(code: "INVALID_ARGS", message: "Missing devices", details: nil))
+            return
+          }
+          
+          if let defaults = UserDefaults(suiteName: "group.ink.ainx.flux") {
+            defaults.set(devicesJson, forKey: "flutter.flux_devices")
+            defaults.synchronize()
+            result(true)
+          } else {
+            result(FlutterError(code: "APP_GROUP_ERROR", message: "Cannot access App Group", details: nil))
+          }
+          
+        default:
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
+    
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
   

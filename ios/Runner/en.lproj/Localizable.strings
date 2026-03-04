@@ -1,0 +1,58 @@
+/* App Intents Localization - English */
+
+"开/关灯" = "Toggle WLED";
+"用%@开灯" = "Turn on with %@";
+"用%@关灯" = "Turn off with %@";
+"%@开关灯" = "Toggle light with %@";
+"开/关 WLED 灯" = "Toggle WLED Light";
+"控制 WLED 设备的开关状态" = "Control the power state of a WLED device";
+"设备" = "Device";
+"开关" = "Power";
+"已开启" = "Turned On";
+"已关闭" = "Turned Off";
+
+"设置亮度" = "Set Brightness";
+"用%@设置亮度" = "Set brightness with %@";
+"%@调亮度" = "Adjust brightness with %@";
+"设置 WLED 亮度" = "Set WLED Brightness";
+"调整 WLED 设备的亮度" = "Adjust the master brightness of a WLED device";
+"亮度 (%)" = "Brightness (%)";
+
+"设置颜色" = "Set Color";
+"用%@设置颜色" = "Set color with %@";
+"%@换颜色" = "Change color with %@";
+"设置 WLED 颜色" = "Set WLED Color";
+"设置 WLED 设备的灯光颜色，可选择预设颜色或自定义 Hex 色值" = "Set the light color of a WLED device with presets or custom Hex.";
+"颜色" = "Color";
+"自定义 Hex" = "Custom Hex";
+
+"设置效果" = "Set Effect";
+"用%@切换效果" = "Set effect with %@";
+"%@换灯效" = "Change effect with %@";
+"设置 WLED 效果" = "Set WLED Effect";
+"从设备效果列表中选择灯效" = "Select a lighting effect from the device";
+"效果" = "Effect";
+
+"加载预设" = "Load Preset";
+"用%@加载预设" = "Load preset with %@";
+"%@切预设" = "Switch preset with %@";
+"加载 WLED 预设" = "Load WLED Preset";
+"加载 WLED 设备上保存的预设" = "Load a preset saved on the WLED device";
+"预设编号" = "Preset ID";
+
+/* Color Enum */
+"暖白 💡" = "Warm White 💡";
+"冷白 🔆" = "Cool White 🔆";
+"红色 🔴" = "Red 🔴";
+"橙色 🟠" = "Orange 🟠";
+"黄色 🟡" = "Yellow 🟡";
+"绿色 🟢" = "Green 🟢";
+"青色 🩵" = "Cyan 🩵";
+"蓝色 🔵" = "Blue 🔵";
+"紫色 🟣" = "Purple 🟣";
+"粉色 🩷" = "Pink 🩷";
+"自定义 RGB 🎨" = "Custom RGB 🎨";
+
+/* WLEDDeviceEntity */
+"WLED 设备" = "WLED Device";
+"灯效" = "Effect";

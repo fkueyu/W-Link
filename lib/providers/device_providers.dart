@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/core.dart';
 import '../models/models.dart';
 import '../services/services.dart';
+import '../services/app_groups_service.dart';
 import 'common_providers.dart';
 
 // ============================================================================
@@ -34,6 +35,8 @@ class DeviceListNotifier extends StateNotifier<List<WledDevice>> {
         state = list
             .map((e) => WledDevice.fromJson(e as Map<String, dynamic>))
             .toList();
+        // 初始同步到 App Groups
+        AppGroupsService.syncDevices(state);
       }
     } catch (e) {
       debugPrint('[DeviceList] Error loading devices: $e');
@@ -43,6 +46,8 @@ class DeviceListNotifier extends StateNotifier<List<WledDevice>> {
   Future<void> _saveDevices() async {
     final jsonStr = jsonEncode(state.map((d) => d.toJson()).toList());
     await _prefs.setString(_storageKey, jsonStr);
+    // 同步到 App Groups，供 iOS 快捷指令使用
+    AppGroupsService.syncDevices(state);
   }
 
   Future<void> addDevice(WledDevice device) async {

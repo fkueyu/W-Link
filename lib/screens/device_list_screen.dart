@@ -350,44 +350,23 @@ class DeviceListScreen extends ConsumerWidget {
               else
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverLayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.crossAxisExtent;
-                      final crossAxisCount = width > 900
-                          ? 3
-                          : width > 600
-                          ? 2
-                          : 1;
-                      // 根据实际卡片宽度动态计算宽高比，确保最小高度 200px
-                      final cardWidth =
-                          (width - 16 * 2 - 12 * (crossAxisCount - 1)) /
-                          crossAxisCount;
-                      final aspectRatio = (cardWidth / 200).clamp(1.0, 2.2);
-                      return SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 4,
-                          childAspectRatio: aspectRatio,
-                        ),
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final device = devices[index];
-                          return DeviceCard(
-                                device: device,
-                                onTap: () =>
-                                    _navigateToControl(context, ref, device),
-                                onDelete: () {
-                                  ref
-                                      .read(deviceListProvider.notifier)
-                                      .removeDevice(device.id);
-                                },
-                              )
-                              .animate()
-                              .fadeIn(delay: (index * 100).ms)
-                              .slideX(begin: 0.1);
-                        }, childCount: devices.length),
-                      );
-                    },
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final device = devices[index];
+                      return DeviceCard(
+                            device: device,
+                            onTap: () =>
+                                _navigateToControl(context, ref, device),
+                            onDelete: () {
+                              ref
+                                  .read(deviceListProvider.notifier)
+                                  .removeDevice(device.id);
+                            },
+                          )
+                          .animate()
+                          .fadeIn(delay: (index * 100).ms)
+                          .slideX(begin: 0.1);
+                    }, childCount: devices.length),
                   ),
                 ),
             ],
