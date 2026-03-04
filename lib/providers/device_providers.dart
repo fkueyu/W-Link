@@ -144,10 +144,17 @@ final deviceStateProvider =
 /// ！！关键：设备列表卡片使用的 Family Provider ！！
 /// 现已全面接入 WebSocket 实时通信 + HTTP 轮询降级
 final deviceFamilyStateProvider = StateNotifierProvider.family
-    .autoDispose<DeviceStateNotifier, AsyncValue<WledState>, WledDevice>((
+    .autoDispose<DeviceStateNotifier, AsyncValue<WledState>, String>((
       ref,
-      device,
+      deviceId,
     ) {
+      final devices = ref.read(deviceListProvider);
+      final device = devices.firstWhere(
+        (d) => d.id == deviceId,
+        orElse: () =>
+            WledDevice(id: deviceId, name: '', originalName: '', ip: '0.0.0.0'),
+      );
+
       final ws = WledWebSocketService(host: device.ip, port: device.port);
       final api = WledApiService(baseUrl: device.baseUrl, ws: ws);
 
@@ -156,13 +163,14 @@ final deviceFamilyStateProvider = StateNotifierProvider.family
         ws.dispose();
       });
 
-      return DeviceStateNotifier(api, ref, webSocket: ws);
+      return DeviceStateNotifier(api, ref, webSocket: ws, deviceId: deviceId);
     });
 
 class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   final WledApiService? _api;
   final Ref _ref;
   final WledWebSocketService? _ws;
+  final String? _deviceId; // 非 null 表示来自 family provider
 
   Timer? _refreshTimer;
   StreamSubscription? _wsStateSubscription;
@@ -174,9 +182,15 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
   int _failureCount = 0;
   bool _wsConnected = false;
 
-  DeviceStateNotifier(this._api, this._ref, {WledWebSocketService? webSocket})
-    : _ws = webSocket,
-      super(const AsyncValue.loading()) {
+  /// [deviceId] 非 null → family provider；null → detail provider
+  DeviceStateNotifier(
+    this._api,
+    this._ref, {
+    WledWebSocketService? webSocket,
+    String? deviceId,
+  }) : _ws = webSocket,
+       _deviceId = deviceId,
+       super(const AsyncValue.loading()) {
     if (_api != null) {
       if (_ws != null) {
         _initWebSocket();
@@ -185,6 +199,9 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
       }
     }
   }
+
+  bool get _isFamily => _deviceId != null;
+  bool get _isDetail => !_isFamily;
 
   // ===========================================================================
   // WebSocket
@@ -309,12 +326,45 @@ class DeviceStateNotifier extends StateNotifier<AsyncValue<WledState>> {
     final current = state.valueOrNull;
     if (current == null) return;
     _lastUserActionTime = DateTime.now();
-    state = AsyncValue.data(updater(current));
+    final newState = updater(current);
+    state = AsyncValue.data(newState);
+
+    // 双向同步
+    _syncToPeer(newState);
+
     try {
-      // 优先通过 WebSocket 发送（如果已连接且有 payload）
       await apiCall();
       _lastUserActionTime = DateTime.now();
     } catch (_) {}
+  }
+
+  /// 双向同步：detail ↔ family
+  void _syncToPeer(WledState newState) {
+    try {
+      if (_isDetail) {
+        // detail → family：找到当前聚焦设备的 family notifier
+        final device = _ref.read(currentDeviceProvider);
+        if (device == null) return;
+        _ref
+            .read(deviceFamilyStateProvider(device.id).notifier)
+            .syncState(newState);
+      } else {
+        // family → detail：如果当前聚焦的正好是同一设备
+        final currentId = _ref.read(currentDeviceIdProvider);
+        if (currentId == _deviceId) {
+          _ref.read(deviceStateProvider.notifier).syncState(newState);
+        }
+      }
+    } catch (_) {
+      // 对端 provider 可能已 dispose，静默忽略
+    }
+  }
+
+  /// 外部同步状态（不触发 API 调用，不再反向同步）
+  void syncState(WledState newState) {
+    if (!mounted) return;
+    _lastUserActionTime = DateTime.now();
+    state = AsyncValue.data(newState);
   }
 
   @override

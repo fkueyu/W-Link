@@ -42,7 +42,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
 
   @override
   Widget build(BuildContext context) {
-    final stateAsync = ref.watch(deviceFamilyStateProvider(widget.device));
+    final stateAsync = ref.watch(deviceFamilyStateProvider(widget.device.id));
     final state = stateAsync.valueOrNull;
 
     final deviceColor = _getDeviceColor(state);
@@ -333,9 +333,8 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
     final isOn = state.on;
     return BouncyButton(
       onTap: () {
-        PlatformUtils.hapticMedium();
         final notifier = ref.read(
-          deviceFamilyStateProvider(widget.device).notifier,
+          deviceFamilyStateProvider(widget.device.id).notifier,
         );
         notifier.optimisticUpdate((s) => s.copyWith(on: !isOn), () async {
           final api = WledApiService(baseUrl: widget.device.baseUrl);
@@ -448,7 +447,7 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
                 setState(() => _localBrightness = null);
                 final bri = v.round();
                 ref
-                    .read(deviceFamilyStateProvider(widget.device).notifier)
+                    .read(deviceFamilyStateProvider(widget.device.id).notifier)
                     .optimisticUpdate(
                       (s) => s.copyWith(on: bri > 0, bri: bri),
                       () async {

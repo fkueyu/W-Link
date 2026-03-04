@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.2] - 2026-03-04
+
+### Fixed / 修复
+
+- **Device Sync**: 彻底修复设备列表与详情卡片之间的状态同步问题，解除因实例变化导致的无限断线重连隐蔽 Bug。
+- **Haptic Feedback**: 修复列表页与详情页中设备电源键由于重复响应事件而导致的两段式触觉反馈。
+
 ## [2.4.1] - 2026-03-04
 
 ### 优化

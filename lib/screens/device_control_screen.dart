@@ -546,7 +546,6 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
   ) {
     return BouncyButton(
       onTap: () {
-        PlatformUtils.hapticHeavy();
         ref
             .read(deviceStateProvider.notifier)
             .optimisticUpdate(
