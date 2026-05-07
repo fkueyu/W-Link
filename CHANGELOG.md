@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Docs / 文档
+
+- **AI 协作文档**：新增 `CLAUDE.md`，沉淀给 Claude Code 等 AI 工具的工程上下文，覆盖常用命令、Riverpod / JSON 双 codegen 流程、`adaptive_shell` 800px 双栏阈值、`MethodChannel('flux/app_groups')` 桥接、SwiftPM-only iOS 等读代码不易看出的事实。
+- **中文文档落地**：将 `docs/` 下原英文文档替换为 6 份中文版本（架构设计、贡献指南、应用商店元数据、隐私政策、帮助与支持、任务清单），并在 `CLAUDE.md` 中索引每份文档的用途与适用场景。
+
 ## [2.4.3] - 2026-03-04
 
 ### Fixed / 修复
