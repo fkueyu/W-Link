@@ -172,7 +172,9 @@ class _PresetsListScreenState extends ConsumerState<PresetsListScreen> {
                           onTap: () {
                             HapticFeedback.mediumImpact();
                             api?.stopPlaylist();
-                            ref.read(deviceStateProvider.notifier).refresh();
+                            ref
+                                .read(currentDeviceSessionNotifierProvider)
+                                .refresh();
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -272,7 +274,9 @@ class _PresetsListScreenState extends ConsumerState<PresetsListScreen> {
                                     onTap: () {
                                       HapticFeedback.selectionClick();
                                       ref
-                                          .read(deviceStateProvider.notifier)
+                                          .read(
+                                            currentDeviceSessionNotifierProvider,
+                                          )
                                           .optimisticUpdate(
                                             (s) => s.copyWith(ps: preset.id),
                                             () => api!.loadPreset(preset.id),

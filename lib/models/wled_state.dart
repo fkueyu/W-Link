@@ -103,13 +103,32 @@ class WledState {
   /// 亮度百分比 0.0-1.0
   double get briPercent => bri / 255.0;
 
-  /// 获取主分段的主颜色
-  List<int>? get primaryColor {
+  /// 按 WLED 返回的主分段 ID 获取主分段。
+  ///
+  /// 部分设备的分段列表并不按 ID 排序，因此不能用列表位置推断主分段。
+  /// 当固件返回了已不存在的 mainseg 时，安全回退到当前第一个分段。
+  WledSegment? get mainSegment {
     if (seg.isEmpty) return null;
-    final main = seg.firstWhere(
-      (s) => s.id == mainSeg,
+    return seg.firstWhere(
+      (segment) => segment.id == mainSeg,
       orElse: () => seg.first,
     );
+  }
+
+  /// 通过真实分段 ID 替换分段，同时保持设备返回的列表顺序。
+  WledState replaceSegmentById(WledSegment segment) {
+    final index = seg.indexWhere((current) => current.id == segment.id);
+    if (index == -1) return this;
+
+    final updatedSegments = List<WledSegment>.of(seg);
+    updatedSegments[index] = segment;
+    return copyWith(seg: updatedSegments);
+  }
+
+  /// 获取主分段的主颜色
+  List<int>? get primaryColor {
+    final main = mainSegment;
+    if (main == null) return null;
     return main.col.isNotEmpty ? main.col.first : null;
   }
 }

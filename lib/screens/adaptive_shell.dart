@@ -31,6 +31,15 @@ class _AdaptiveShellState extends ConsumerState<AdaptiveShell> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = ref.watch(l10nProvider);
+    ref.listen<DeviceCommandFailure?>(deviceCommandFailureProvider, (
+      previous,
+      next,
+    ) {
+      if (next == null || next.sequence == previous?.sequence) return;
+      AppToast.error(context, l10n.controlFailed);
+    });
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > _kSplitBreakpoint;

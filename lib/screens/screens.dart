@@ -8,5 +8,6 @@ export 'segments_list_screen.dart';
 export 'groups_management_screen.dart';
 export 'settings_screen.dart';
 export 'schedule_screen.dart';
+export 'nightlight_screen.dart';
 export 'custom_palette_editor_screen.dart';
 export 'adaptive_shell.dart';

@@ -355,7 +355,7 @@ class _SegmentsListScreenState extends ConsumerState<SegmentsListScreen> {
     );
 
     ref
-        .read(deviceStateProvider.notifier)
+        .read(currentDeviceSessionNotifierProvider)
         .optimisticUpdate(
           (s) {
             final updatedSegs = s.seg.map((seg) {
@@ -478,7 +478,9 @@ class _SegmentsListScreenState extends ConsumerState<SegmentsListScreen> {
                                   Navigator.pop(context);
 
                                   ref
-                                      .read(deviceStateProvider.notifier)
+                                      .read(
+                                        currentDeviceSessionNotifierProvider,
+                                      )
                                       .optimisticUpdate(
                                         (s) => s.copyWith(
                                           seg: s.seg
@@ -487,13 +489,6 @@ class _SegmentsListScreenState extends ConsumerState<SegmentsListScreen> {
                                         ),
                                         () => api.deleteSegment(segmentId),
                                       );
-                                  // 强制拉取最新状态（跳过保护窗口）
-                                  Future.delayed(
-                                    const Duration(milliseconds: 500),
-                                    () => ref
-                                        .read(deviceStateProvider.notifier)
-                                        .forceRefresh(),
-                                  );
                                 },
                                 child: const Text('删除'),
                               ),
@@ -588,7 +583,7 @@ class _SegmentCard extends ConsumerWidget {
                   onChanged: (val) {
                     HapticFeedback.selectionClick();
                     ref
-                        .read(deviceStateProvider.notifier)
+                        .read(currentDeviceSessionNotifierProvider)
                         .optimisticUpdate(
                           (s) => s.copyWith(
                             seg: s.seg
@@ -630,7 +625,7 @@ class _SegmentCard extends ConsumerWidget {
                   0,
                   255,
                   (v) => ref
-                      .read(deviceStateProvider.notifier)
+                      .read(currentDeviceSessionNotifierProvider)
                       .optimisticUpdate(
                         (s) => s.copyWith(
                           seg: s.seg
@@ -717,7 +712,7 @@ class _SegmentCard extends ConsumerWidget {
                     0,
                     255,
                     (v) => ref
-                        .read(deviceStateProvider.notifier)
+                        .read(currentDeviceSessionNotifierProvider)
                         .optimisticUpdate(
                           (s) => s.copyWith(
                             seg: s.seg
@@ -738,7 +733,7 @@ class _SegmentCard extends ConsumerWidget {
                     0,
                     255,
                     (v) => ref
-                        .read(deviceStateProvider.notifier)
+                        .read(currentDeviceSessionNotifierProvider)
                         .optimisticUpdate(
                           (s) => s.copyWith(
                             seg: s.seg
@@ -790,7 +785,7 @@ class _SegmentCard extends ConsumerWidget {
                   1,
                   255,
                   (v) => ref
-                      .read(deviceStateProvider.notifier)
+                      .read(currentDeviceSessionNotifierProvider)
                       .optimisticUpdate(
                         (s) => s.copyWith(
                           seg: s.seg
@@ -811,7 +806,7 @@ class _SegmentCard extends ConsumerWidget {
                   0,
                   255,
                   (v) => ref
-                      .read(deviceStateProvider.notifier)
+                      .read(currentDeviceSessionNotifierProvider)
                       .optimisticUpdate(
                         (s) => s.copyWith(
                           seg: s.seg
@@ -853,7 +848,7 @@ class _SegmentCard extends ConsumerWidget {
               segment.start,
               state.info.leds.count,
               (v) => ref
-                  .read(deviceStateProvider.notifier)
+                  .read(currentDeviceSessionNotifierProvider)
                   .optimisticUpdate(
                     (s) => s.copyWith(
                       seg: s.seg
@@ -878,7 +873,7 @@ class _SegmentCard extends ConsumerWidget {
               segment.stop,
               state.info.leds.count,
               (v) => ref
-                  .read(deviceStateProvider.notifier)
+                  .read(currentDeviceSessionNotifierProvider)
                   .optimisticUpdate(
                     (s) => s.copyWith(
                       seg: s.seg
@@ -908,7 +903,7 @@ class _SegmentCard extends ConsumerWidget {
                   segment.start,
                   state.info.leds.matrix?.width ?? 255,
                   (v) => ref
-                      .read(deviceStateProvider.notifier)
+                      .read(currentDeviceSessionNotifierProvider)
                       .optimisticUpdate(
                         (s) => s.copyWith(
                           seg: s.seg
@@ -937,7 +932,7 @@ class _SegmentCard extends ConsumerWidget {
                   segment.stop,
                   state.info.leds.matrix?.width ?? 255,
                   (v) => ref
-                      .read(deviceStateProvider.notifier)
+                      .read(currentDeviceSessionNotifierProvider)
                       .optimisticUpdate(
                         (s) => s.copyWith(
                           seg: s.seg
@@ -964,7 +959,7 @@ class _SegmentCard extends ConsumerWidget {
                   segment.startY,
                   state.info.leds.matrix?.height ?? 255,
                   (v) => ref
-                      .read(deviceStateProvider.notifier)
+                      .read(currentDeviceSessionNotifierProvider)
                       .optimisticUpdate(
                         (s) => s.copyWith(
                           seg: s.seg
@@ -993,7 +988,7 @@ class _SegmentCard extends ConsumerWidget {
                   segment.stopY,
                   state.info.leds.matrix?.height ?? 255,
                   (v) => ref
-                      .read(deviceStateProvider.notifier)
+                      .read(currentDeviceSessionNotifierProvider)
                       .optimisticUpdate(
                         (s) => s.copyWith(
                           seg: s.seg
@@ -1121,6 +1116,8 @@ class _SegmentCard extends ConsumerWidget {
     WledSegment seg,
     WledApiService api,
   ) {
+    final targetSession = ref.read(currentDeviceSessionNotifierProvider);
+    final targetApi = targetSession.api ?? api;
     final current = seg.col.isNotEmpty && seg.col.first.length >= 3
         ? Color.fromARGB(
             255,
@@ -1135,13 +1132,13 @@ class _SegmentCard extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => ColorPickerSheet(
         initialColor: current,
-        onColorChanged: (color) {
+        onColorChanged: (color) async {
           final rgb = [
             (color.r * 255).round(),
             (color.g * 255).round(),
             (color.b * 255).round(),
           ];
-          ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
+          await targetSession.optimisticUpdate((s) {
             final segs = s.seg.toList();
             final idx = segs.indexWhere((s) => s.id == seg.id);
             if (idx == -1) return s;
@@ -1153,7 +1150,7 @@ class _SegmentCard extends ConsumerWidget {
             }
             segs[idx] = segs[idx].copyWith(col: cols);
             return s.copyWith(seg: segs);
-          }, () => api.setSegmentState(seg.id, col: [rgb]));
+          }, () => targetApi.setSegmentState(seg.id, col: [rgb]));
         },
       ),
     );

@@ -110,6 +110,66 @@ void main() {
       const state = WledState(on: true, bri: 255);
       expect(state.primaryColor, null);
     });
+
+    test(
+      'mainSegment resolves the configured segment id, not list position',
+      () {
+        const state = WledState(
+          on: true,
+          bri: 100,
+          mainSeg: 7,
+          seg: [WledSegment(id: 2), WledSegment(id: 7)],
+        );
+
+        expect(state.mainSegment?.id, 7);
+      },
+    );
+
+    test('mainSegment falls back safely and handles an empty segment list', () {
+      const fallback = WledState(
+        on: true,
+        bri: 100,
+        mainSeg: 99,
+        seg: [WledSegment(id: 4)],
+      );
+      const empty = WledState(on: true, bri: 100, mainSeg: 99);
+
+      expect(fallback.mainSegment?.id, 4);
+      expect(empty.mainSegment, isNull);
+    });
+
+    test(
+      'replaceSegmentById preserves order and replaces only matching id',
+      () {
+        const state = WledState(
+          on: true,
+          bri: 100,
+          seg: [WledSegment(id: 2, bri: 10), WledSegment(id: 7, bri: 20)],
+        );
+
+        final updated = state.replaceSegmentById(
+          const WledSegment(id: 7, bri: 99),
+        );
+
+        expect(updated.seg.map((segment) => segment.id), [2, 7]);
+        expect(updated.seg.first.bri, 10);
+        expect(updated.seg.last.bri, 99);
+      },
+    );
+
+    test('replaceSegmentById leaves state unchanged for an unknown id', () {
+      const state = WledState(
+        on: true,
+        bri: 100,
+        seg: [WledSegment(id: 2, bri: 10)],
+      );
+
+      final updated = state.replaceSegmentById(
+        const WledSegment(id: 7, bri: 99),
+      );
+
+      expect(identical(updated, state), isTrue);
+    });
   });
 
   group('WledNightlight', () {

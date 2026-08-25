@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class AppToast {
@@ -13,42 +14,63 @@ class AppToast {
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
 
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     final bg = isError
-        ? colorScheme.errorContainer
-        : colorScheme.secondaryContainer;
+        ? (isDark
+              ? Colors.redAccent.withValues(alpha: 0.85)
+              : Colors.red.shade600)
+        : (isDark
+              ? Colors.white.withValues(alpha: 0.15)
+              : Colors.black.withValues(alpha: 0.75));
 
-    final fg = isError
-        ? colorScheme.onErrorContainer
-        : colorScheme.onSecondaryContainer;
+    final fg = isError ? Colors.white : Colors.white;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline : Icons.check_circle_outline,
-              color: fg,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: fg,
-                  fontWeight: FontWeight.w500,
+        content: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: isDark ? 0.2 : 0.3),
+                  width: 1,
                 ),
               ),
+              child: Row(
+                children: [
+                  Icon(
+                    isError
+                        ? Icons.error_outline_rounded
+                        : Icons.check_circle_outline_rounded,
+                    color: fg,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: bg,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: EdgeInsets.zero,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         duration: duration,
         action: actionLabel != null && onAction != null
             ? SnackBarAction(

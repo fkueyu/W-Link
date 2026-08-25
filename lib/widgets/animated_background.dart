@@ -21,7 +21,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 10), // 10秒一个周期，呼吸感更强
-    )..repeat(reverse: true);
+    );
 
     _topAlignAnimation = TweenSequence<Alignment>([
       TweenSequenceItem(
@@ -52,6 +52,19 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
         weight: 1,
       ),
     ]).animate(_controller);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) {
+      _controller.stop();
+      _controller.value = 0.35;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
   }
 
   @override

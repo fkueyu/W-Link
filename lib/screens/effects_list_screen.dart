@@ -214,46 +214,37 @@ class _EffectsListScreenState extends ConsumerState<EffectsListScreen> {
                         final isSelected = currentFx == fxIdx;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child:
-                              _EffectTile(
-                                    englishName: name,
-                                    chineseName: isZh
-                                        ? getEffectChineseName(name)
-                                        : name,
-                                    index: fxIdx,
-                                    isFavorite: favs.contains(fxIdx),
-                                    onFavoriteToggle: () =>
-                                        favsService.toggleEffectFavorite(fxIdx),
-                                    isSelected: isSelected,
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      final sid = widget.segmentId;
-                                      ref
-                                          .read(deviceStateProvider.notifier)
-                                          .optimisticUpdate(
-                                            (s) => s.copyWith(
-                                              ps: -1, // Clear preset selection when an effect is chosen
-                                              seg: s.seg
-                                                  .map(
-                                                    (seg) => seg.id == sid
-                                                        ? seg.copyWith(
-                                                            fx: fxIdx,
-                                                          )
-                                                        : seg,
-                                                  )
-                                                  .toList(),
-                                            ),
-                                            () => api!.setSegmentState(
-                                              sid,
-                                              fx: fxIdx,
-                                            ),
-                                          );
-                                      Navigator.pop(context);
-                                    },
-                                  )
-                                  .animate()
-                                  .fadeIn(delay: (index * 15).ms)
-                                  .slideX(begin: 0.05),
+                          child: _EffectTile(
+                            englishName: name,
+                            chineseName: isZh
+                                ? getEffectChineseName(name)
+                                : name,
+                            index: fxIdx,
+                            isFavorite: favs.contains(fxIdx),
+                            onFavoriteToggle: () =>
+                                favsService.toggleEffectFavorite(fxIdx),
+                            isSelected: isSelected,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              final sid = widget.segmentId;
+                              ref
+                                  .read(currentDeviceSessionNotifierProvider)
+                                  .optimisticUpdate(
+                                    (s) => s.copyWith(
+                                      ps: -1, // Clear preset selection when an effect is chosen
+                                      seg: s.seg
+                                          .map(
+                                            (seg) => seg.id == sid
+                                                ? seg.copyWith(fx: fxIdx)
+                                                : seg,
+                                          )
+                                          .toList(),
+                                    ),
+                                    () => api!.setSegmentState(sid, fx: fxIdx),
+                                  );
+                              Navigator.pop(context);
+                            },
+                          ).animate().fadeIn(delay: (index * 15).ms).slideX(begin: 0.05),
                         );
                       },
                     );

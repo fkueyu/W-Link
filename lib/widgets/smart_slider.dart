@@ -41,6 +41,9 @@ class _SmartSliderState extends State<SmartSlider> {
   // 本地拖拽值
   double? _dragValue;
 
+  // 记录上一次吸附位置，避免重复抖动震动 (0: min, 1: mid, 2: max)
+  int? _lastSnapIndex;
+
   // 当前显示的有效值 (优先显示拖拽值，否则显示外部传入值)
   double get _currentValue => _dragValue ?? widget.value;
 
@@ -49,9 +52,25 @@ class _SmartSliderState extends State<SmartSlider> {
 
     setState(() => _dragValue = value);
 
-    // 触发触觉反馈 (轻微)
-    if ((value - _currentValue).abs() > (widget.max - widget.min) / 20) {
-      // HapticFeedback.selectionClick(); // 可选
+    // 吸附刻度检测 (0%, 50%, 100%)
+    final range = widget.max - widget.min;
+    if (range > 0) {
+      final norm = (value - widget.min) / range;
+      int? currentSnap;
+      if (norm <= 0.03) {
+        currentSnap = 0; // min
+      } else if ((norm - 0.5).abs() <= 0.025) {
+        currentSnap = 1; // mid (50%)
+      } else if (norm >= 0.97) {
+        currentSnap = 2; // max
+      }
+
+      if (currentSnap != null && currentSnap != _lastSnapIndex) {
+        _lastSnapIndex = currentSnap;
+        HapticFeedback.selectionClick();
+      } else if (currentSnap == null) {
+        _lastSnapIndex = null;
+      }
     }
 
     widget.onChanged?.call(value);

@@ -17,7 +17,7 @@ import 'effects_list_screen.dart';
 import 'palettes_list_screen.dart';
 import 'presets_list_screen.dart';
 import 'segments_list_screen.dart';
-import 'schedule_screen.dart';
+import 'nightlight_screen.dart';
 
 /// 设备控制中心 - 核心交互页面
 class DeviceControlScreen extends ConsumerStatefulWidget {
@@ -58,9 +58,15 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
 
     // 监听实时设备对象以获取最新名称
     final currentDevice = ref.watch(currentDeviceProvider) ?? widget.device;
+    final ambientState = stateAsync.valueOrNull;
+    final ambientColor = ambientState?.primaryColor != null
+        ? ColorExtension.fromRgbList(ambientState!.primaryColor!)
+        : FluxTheme.primary;
 
     return Scaffold(
-      body: AnimatedBackground(
+      body: DeviceAmbientBackground(
+        color: ambientColor,
+        isActive: ambientState?.on == true,
         child: Stack(
           children: [
             // Safe Area Content
@@ -201,7 +207,8 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           ),
           const SizedBox(height: 32),
           BouncyButton(
-            onTap: () => ref.read(deviceStateProvider.notifier).refresh(),
+            onTap: () =>
+                ref.read(currentDeviceSessionNotifierProvider).refresh(),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               decoration: BoxDecoration(
@@ -241,8 +248,8 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 80),
+            SliverToBoxAdapter(
+              child: SizedBox(height: widget.embedded ? 20 : 80),
             ), // Space for glass bar
             // 1. Unified Control Hero
             SliverToBoxAdapter(
@@ -374,7 +381,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    _buildPowerButton(isOn, color, api, isDark),
+                    _buildPowerButton(isOn, color, api, isDark, l10n),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -543,53 +550,63 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     Color color,
     WledApiService? api,
     bool isDark,
+    AppStrings l10n,
   ) {
-    return BouncyButton(
-      onTap: () {
-        ref
-            .read(deviceStateProvider.notifier)
-            .optimisticUpdate(
-              (s) => s.copyWith(ps: -1, on: !isOn),
-              () => api!.setOn(!isOn),
-            );
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isOn
-              ? (isDark
-                    ? Color.lerp(
-                        color,
-                        Colors.white,
-                        0.15,
-                      )!.withValues(alpha: 0.8)
-                    : color)
-              : (isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.black.withValues(alpha: 0.05)),
-          shape: BoxShape.circle,
-          boxShadow: [
-            if (isOn)
-              BoxShadow(
-                color: color.withValues(alpha: isDark ? 0.3 : 0.5),
-                blurRadius: 20,
-                spreadRadius: 2,
-              ),
-            if (isDark)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 15,
-                offset: const Offset(0, 6),
-              ),
-          ],
-        ),
-        child: Icon(
-          Icons.power_settings_new_rounded,
-          color: isOn
-              ? Colors.white
-              : (isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black54),
-          size: 24,
+    return Semantics(
+      button: true,
+      enabled: api != null,
+      label: '${l10n.power}: ${isOn ? l10n.statusOn : l10n.statusOff}',
+      child: BouncyButton(
+        onTap: api == null
+            ? null
+            : () {
+                ref
+                    .read(currentDeviceSessionNotifierProvider)
+                    .optimisticUpdate(
+                      (s) => s.copyWith(ps: -1, on: !isOn),
+                      () => api.setOn(!isOn),
+                    );
+              },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isOn
+                ? (isDark
+                      ? Color.lerp(
+                          color,
+                          Colors.white,
+                          0.15,
+                        )!.withValues(alpha: 0.8)
+                      : color)
+                : (isDark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.black.withValues(alpha: 0.05)),
+            shape: BoxShape.circle,
+            boxShadow: [
+              if (isOn)
+                BoxShadow(
+                  color: color.withValues(alpha: isDark ? 0.3 : 0.5),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              if (isDark)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 15,
+                  offset: const Offset(0, 6),
+                ),
+            ],
+          ),
+          child: Icon(
+            Icons.power_settings_new_rounded,
+            color: isOn
+                ? Colors.white
+                : (isDark
+                      ? Colors.white.withValues(alpha: 0.5)
+                      : Colors.black54),
+            size: 24,
+          ),
         ),
       ),
     );
@@ -654,21 +671,29 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
               inactiveTrackColor: Colors.transparent,
               trackShape: const _FullWidthTrackShape(),
             ),
-            child: Slider(
-              value: value,
-              min: 0,
-              max: 255,
-              onChanged: (v) => setState(() => _localBrightness = v),
-              onChangeEnd: (v) {
-                setState(() => _localBrightness = null);
-                final bri = v.round();
-                ref
-                    .read(deviceStateProvider.notifier)
-                    .optimisticUpdate(
-                      (s) => s.copyWith(ps: -1, on: bri > 0, bri: bri),
-                      () => api!.setState({'on': bri > 0, 'bri': bri}),
-                    );
-              },
+            child: Semantics(
+              label: l10n.brightness,
+              value: '$percent%',
+              child: Slider(
+                value: value,
+                min: 0,
+                max: 255,
+                onChanged: api == null
+                    ? null
+                    : (v) => setState(() => _localBrightness = v),
+                onChangeEnd: api == null
+                    ? null
+                    : (v) {
+                        setState(() => _localBrightness = null);
+                        final bri = v.round();
+                        ref
+                            .read(currentDeviceSessionNotifierProvider)
+                            .optimisticUpdate(
+                              (s) => s.copyWith(ps: -1, on: bri > 0, bri: bri),
+                              () => api.setState({'on': bri > 0, 'bri': bri}),
+                            );
+                      },
+              ),
             ),
           ),
           // 内容层 (Icon + Percentage)
@@ -716,7 +741,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
 
     String fxLabel = '...';
     if (effectsAsync.hasValue) {
-      final fx = state.seg.isNotEmpty ? state.seg.first.fx : 0;
+      final fx = state.mainSegment?.fx ?? 0;
       if (fx < effectsAsync.value!.length) {
         fxLabel = l10n is ZhStrings
             ? getEffectChineseName(effectsAsync.value![fx])
@@ -726,7 +751,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
 
     String palLabel = '...';
     if (palettesAsync.hasValue) {
-      final pal = state.seg.isNotEmpty ? state.seg.first.pal : 0;
+      final pal = state.mainSegment?.pal ?? 0;
       if (pal < palettesAsync.value!.length) {
         palLabel = l10n is ZhStrings
             ? getPaletteChineseName(palettesAsync.value![pal])
@@ -749,7 +774,9 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const EffectsListScreen(),
+                      builder: (_) => EffectsListScreen(
+                        segmentId: state.mainSegment?.id ?? state.mainSeg,
+                      ),
                     ),
                   ),
                   isDark,
@@ -762,7 +789,9 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const PalettesListScreen(),
+                      builder: (_) => PalettesListScreen(
+                        segmentId: state.mainSegment?.id ?? state.mainSeg,
+                      ),
                     ),
                   ),
                   isDark,
@@ -818,6 +847,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                         ? ColorExtension.fromRgbList(state.primaryColor!)
                         : Colors.white,
                     api,
+                    state.mainSegment?.id ?? state.mainSeg,
                   ),
                   isDark,
                   subWidget: Row(
@@ -849,13 +879,13 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   ),
                 ),
                 _buildActionTile(
-                  l10n.schedule,
+                  l10n.nightlight,
                   state.nl.on ? l10n.timerActive : l10n.timerInactive,
                   Icons.timer_rounded,
                   state.nl.on ? Colors.greenAccent : Colors.grey,
                   () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ScheduleScreen()),
+                    MaterialPageRoute(builder: (_) => const NightlightScreen()),
                   ),
                   isDark,
                 ),
@@ -933,7 +963,10 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
   ) {
     final metadataAsync = ref.watch(effectMetadataProvider);
     final metadataList = metadataAsync.valueOrNull ?? [];
-    final currentFx = state.seg.isNotEmpty ? state.seg.first.fx : 0;
+    final mainSegment = state.mainSegment;
+    if (mainSegment == null) return const SizedBox.shrink();
+    final currentFx = mainSegment.fx;
+    final segmentId = mainSegment.id;
 
     String metadata = (currentFx >= 0 && currentFx < metadataList.length)
         ? metadataList[currentFx]
@@ -952,49 +985,64 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     // Map segments values to sliders and their optimistic update functions
     final configs = [
       (
-        state.seg.first.sx.toDouble(),
-        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
-          if (s.seg.isEmpty) return s;
-          final segs = s.seg.toList();
-          segs[0] = segs[0].copyWith(sx: v.round());
-          return s.copyWith(ps: -1, seg: segs);
-        }, () => api!.setEffectSpeed(v.round())),
+        mainSegment.sx.toDouble(),
+        (v) => ref.read(currentDeviceSessionNotifierProvider).optimisticUpdate((
+          s,
+        ) {
+          final segment = s.mainSegment;
+          if (segment == null) return s;
+          return s
+              .replaceSegmentById(segment.copyWith(sx: v.round()))
+              .copyWith(ps: -1);
+        }, () => api!.setEffectSpeed(v.round(), segmentId: segmentId)),
       ),
       (
-        state.seg.first.ix.toDouble(),
-        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
-          if (s.seg.isEmpty) return s;
-          final segs = s.seg.toList();
-          segs[0] = segs[0].copyWith(ix: v.round());
-          return s.copyWith(ps: -1, seg: segs);
-        }, () => api!.setEffectIntensity(v.round())),
+        mainSegment.ix.toDouble(),
+        (v) => ref.read(currentDeviceSessionNotifierProvider).optimisticUpdate((
+          s,
+        ) {
+          final segment = s.mainSegment;
+          if (segment == null) return s;
+          return s
+              .replaceSegmentById(segment.copyWith(ix: v.round()))
+              .copyWith(ps: -1);
+        }, () => api!.setEffectIntensity(v.round(), segmentId: segmentId)),
       ),
       (
-        state.seg.first.c1.toDouble(),
-        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
-          if (s.seg.isEmpty) return s;
-          final segs = s.seg.toList();
-          segs[0] = segs[0].copyWith(c1: v.round());
-          return s.copyWith(ps: -1, seg: segs);
-        }, () => api!.setEffectCustom(1, v.round())),
+        mainSegment.c1.toDouble(),
+        (v) => ref.read(currentDeviceSessionNotifierProvider).optimisticUpdate((
+          s,
+        ) {
+          final segment = s.mainSegment;
+          if (segment == null) return s;
+          return s
+              .replaceSegmentById(segment.copyWith(c1: v.round()))
+              .copyWith(ps: -1);
+        }, () => api!.setEffectCustom(1, v.round(), segmentId: segmentId)),
       ),
       (
-        state.seg.first.c2.toDouble(),
-        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
-          if (s.seg.isEmpty) return s;
-          final segs = s.seg.toList();
-          segs[0] = segs[0].copyWith(c2: v.round());
-          return s.copyWith(ps: -1, seg: segs);
-        }, () => api!.setEffectCustom(2, v.round())),
+        mainSegment.c2.toDouble(),
+        (v) => ref.read(currentDeviceSessionNotifierProvider).optimisticUpdate((
+          s,
+        ) {
+          final segment = s.mainSegment;
+          if (segment == null) return s;
+          return s
+              .replaceSegmentById(segment.copyWith(c2: v.round()))
+              .copyWith(ps: -1);
+        }, () => api!.setEffectCustom(2, v.round(), segmentId: segmentId)),
       ),
       (
-        state.seg.first.c3.toDouble(),
-        (v) => ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
-          if (s.seg.isEmpty) return s;
-          final segs = s.seg.toList();
-          segs[0] = segs[0].copyWith(c3: v.round());
-          return s.copyWith(ps: -1, seg: segs);
-        }, () => api!.setEffectCustom(3, v.round())),
+        mainSegment.c3.toDouble(),
+        (v) => ref.read(currentDeviceSessionNotifierProvider).optimisticUpdate((
+          s,
+        ) {
+          final segment = s.mainSegment;
+          if (segment == null) return s;
+          return s
+              .replaceSegmentById(segment.copyWith(c3: v.round()))
+              .copyWith(ps: -1);
+        }, () => api!.setEffectCustom(3, v.round(), segmentId: segmentId)),
       ),
     ];
 
@@ -1059,31 +1107,35 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     BuildContext context,
     Color current,
     WledApiService? api,
+    int segmentId,
   ) {
+    final targetSession = ref.read(currentDeviceSessionNotifierProvider);
+    final targetApi = targetSession.api ?? api;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ColorPickerSheet(
         initialColor: current,
-        onColorChanged: (color) {
+        onColorChanged: (color) async {
           final rgb = [
             (color.r * 255).round(),
             (color.g * 255).round(),
             (color.b * 255).round(),
           ];
-          ref.read(deviceStateProvider.notifier).optimisticUpdate((s) {
-            if (s.seg.isEmpty) return s;
-            final segs = s.seg.toList();
-            final cols = segs[0].col.toList();
+          await targetSession.optimisticUpdate((s) {
+            final segment = s.mainSegment;
+            if (segment == null) return s;
+            final cols = segment.col.toList();
             if (cols.isNotEmpty) {
               cols[0] = rgb;
             } else {
               cols.add(rgb);
             }
-            segs[0] = segs[0].copyWith(col: cols);
-            return s.copyWith(ps: -1, seg: segs);
-          }, () => api!.setColor(rgb));
+            return s
+                .replaceSegmentById(segment.copyWith(col: cols))
+                .copyWith(ps: -1);
+          }, () async => targetApi?.setColor(rgb, segmentId: segmentId));
         },
       ),
     );
@@ -1101,7 +1153,14 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DeviceSettingsSheet(api: api, state: state),
+      builder: (_) => DeviceSettingsSheet(
+        api: api,
+        state: state,
+        onOpenNightlight: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NightlightScreen()),
+        ),
+      ),
     );
   }
 }

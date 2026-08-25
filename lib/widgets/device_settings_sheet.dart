@@ -15,11 +15,13 @@ import 'smart_slider.dart';
 class DeviceSettingsSheet extends ConsumerStatefulWidget {
   final WledApiService api;
   final WledState state;
+  final VoidCallback onOpenNightlight;
 
   const DeviceSettingsSheet({
     super.key,
     required this.api,
     required this.state,
+    required this.onOpenNightlight,
   });
 
   @override
@@ -79,47 +81,10 @@ class _DeviceSettingsSheetState extends ConsumerState<DeviceSettingsSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 1. Nightlight Group
-                          _buildGroup(
-                            (l10n is ZhStrings) ? '定时关机' : l10n.nightlight,
-                            [
-                              _buildToggle(
-                                Icons.nightlight_round_rounded,
-                                (l10n is ZhStrings) ? '定时关机' : l10n.nightlight,
-                                Colors.amber,
-                                state.nl.on,
-                                (v) {
-                                  HapticFeedback.selectionClick();
-                                  widget.api.setNightlight(on: v);
-                                  ref
-                                      .read(deviceStateProvider.notifier)
-                                      .refresh();
-                                },
-                              ),
-                              if (state.nl.on) ...[
-                                _buildSlider(
-                                  l10n.durationMinutes,
-                                  state.nl.dur.toDouble(),
-                                  1,
-                                  255,
-                                  (v) => widget.api.setNightlight(
-                                    duration: v.round(),
-                                  ),
-                                  suffix: 'm',
-                                ),
-                                _buildSlider(
-                                  l10n.targetBrightness,
-                                  state.nl.tbri.toDouble(),
-                                  0,
-                                  255,
-                                  (v) => widget.api.setNightlight(
-                                    targetBrightness: v.round(),
-                                  ),
-                                ),
-                                _buildModePicker(state, isDark, l10n),
-                              ],
-                            ],
-                            isDark,
+                          NightlightSummaryCard(
+                            value: state.nl,
+                            strings: l10n,
+                            onTap: widget.onOpenNightlight,
                           ),
 
                           const SizedBox(height: 24),
@@ -134,7 +99,7 @@ class _DeviceSettingsSheetState extends ConsumerState<DeviceSettingsSheet> {
                               (v) {
                                 HapticFeedback.selectionClick();
                                 ref
-                                    .read(deviceStateProvider.notifier)
+                                    .read(currentDeviceSessionNotifierProvider)
                                     .optimisticUpdate(
                                       (s) => s.copyWith(
                                         udpn: s.udpn.copyWith(send: v),
@@ -151,7 +116,7 @@ class _DeviceSettingsSheetState extends ConsumerState<DeviceSettingsSheet> {
                               (v) {
                                 HapticFeedback.selectionClick();
                                 ref
-                                    .read(deviceStateProvider.notifier)
+                                    .read(currentDeviceSessionNotifierProvider)
                                     .optimisticUpdate(
                                       (s) => s.copyWith(
                                         udpn: s.udpn.copyWith(receive: v),
@@ -174,7 +139,7 @@ class _DeviceSettingsSheetState extends ConsumerState<DeviceSettingsSheet> {
                               255,
                               (v) {
                                 ref
-                                    .read(deviceStateProvider.notifier)
+                                    .read(currentDeviceSessionNotifierProvider)
                                     .optimisticUpdate(
                                       (s) => s.copyWith(transition: v.round()),
                                       () => widget.api.setTransition(v.round()),
@@ -397,53 +362,6 @@ class _DeviceSettingsSheetState extends ConsumerState<DeviceSettingsSheet> {
                 : Colors.black.withValues(alpha: 0.03),
           ),
       ],
-    );
-  }
-
-  Widget _buildModePicker(WledState state, bool isDark, AppStrings l10n) {
-    final modes = [
-      (0, 'Instant'),
-      (1, l10n.modeFade),
-      (2, l10n.modeColorFade),
-      (3, l10n.modeSunrise),
-    ];
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: modes.map((m) {
-          final isSelected = state.nl.mode == m.$1;
-          return BouncyButton(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              widget.api.setNightlight(mode: m.$1);
-              ref.read(deviceStateProvider.notifier).refresh();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? FluxTheme.primary
-                    : (isDark
-                          ? Colors.white10
-                          : Colors.black.withValues(alpha: 0.05)),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                m.$2,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected
-                      ? Colors.white
-                      : (isDark ? Colors.white70 : Colors.black54),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
     );
   }
 

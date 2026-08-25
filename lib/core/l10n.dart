@@ -22,6 +22,9 @@ abstract class AppStrings {
   String get power;
   String get brightness;
   String get color;
+  String get quickColors;
+  String get longPressColorToSave;
+  String get quickColorSaved;
   String get effect;
   String get palette;
   String get presets;
@@ -57,6 +60,7 @@ abstract class AppStrings {
   String get ipAddressHint;
   String get deviceAdded;
   String get connectionFailed;
+  String get controlFailed;
   String get scanningNetwork;
   String get scanComplete;
   String get availableDevices;
@@ -83,6 +87,10 @@ abstract class AppStrings {
   String get selectDevices;
   String get currentEffect;
   String foundCount(int n);
+  String onlineCount(int n);
+  String deviceCount(int n);
+  String get networkReady;
+  String get networkUnavailable;
   String get devices;
   String get device;
   String get effectParameters;
@@ -233,6 +241,12 @@ class ZhStrings implements AppStrings {
   @override
   String get color => '颜色';
   @override
+  String get quickColors => '快捷色';
+  @override
+  String get longPressColorToSave => '长按替换';
+  @override
+  String get quickColorSaved => '已保存到快捷色';
+  @override
   String get effect => '特效';
   @override
   String get effectParameters => '参数';
@@ -247,7 +261,7 @@ class ZhStrings implements AppStrings {
 
   // Settings & Info
   @override
-  String get nightlight => '定时关机 (Nightlight)';
+  String get nightlight => '定时关闭与渐暗';
   @override
   String get durationMinutes => '持续时间 (分钟)';
   @override
@@ -342,6 +356,8 @@ class ZhStrings implements AppStrings {
   @override
   String get connectionFailed => '无法连接到设备，请检查 IP 是否正确';
   @override
+  String get controlFailed => '控制失败，请检查设备连接';
+  @override
   String get scanningNetwork => '正在扫描局域网...';
   @override
   String get scanComplete => '扫描完成';
@@ -393,6 +409,14 @@ class ZhStrings implements AppStrings {
   String get currentEffect => '当前效果';
   @override
   String foundCount(int n) => '发现 $n 个设备';
+  @override
+  String onlineCount(int n) => '$n 台在线';
+  @override
+  String deviceCount(int n) => '共 $n 台';
+  @override
+  String get networkReady => '局域网可用';
+  @override
+  String get networkUnavailable => '局域网不可用';
 
   @override
   String get noFavorites => '暂无收藏';
@@ -529,7 +553,7 @@ class ZhStrings implements AppStrings {
   @override
   String get scheduleTipTitle => '提示';
   @override
-  String get scheduleTipContent => '定时任务可以帮助您在入睡前自动关闭灯光，或者模拟自然的日出唤醒过程。';
+  String get scheduleTipContent => '定时关闭可以在入睡前逐渐调暗灯光，也可以模拟日出唤醒。';
 
   @override
   String get timerStatusScheduled => '将在定时结束后关闭/变暗';
@@ -592,6 +616,12 @@ class EnStrings implements AppStrings {
   @override
   String get color => 'Color';
   @override
+  String get quickColors => 'Quick colors';
+  @override
+  String get longPressColorToSave => 'Hold to replace';
+  @override
+  String get quickColorSaved => 'Saved to quick colors';
+  @override
   String get effect => 'Effect';
   @override
   String get effectParameters => 'Parameters';
@@ -606,7 +636,7 @@ class EnStrings implements AppStrings {
 
   // Settings & Info
   @override
-  String get nightlight => 'Nightlight';
+  String get nightlight => 'Sleep Timer';
   @override
   String get durationMinutes => 'Duration (min)';
   @override
@@ -702,6 +732,8 @@ class EnStrings implements AppStrings {
   @override
   String get connectionFailed => 'Connection failed. Check IP address.';
   @override
+  String get controlFailed => 'Control failed. Check the device connection.';
+  @override
   String get scanningNetwork => 'Scanning network...';
   @override
   String get scanComplete => 'Scan complete';
@@ -753,6 +785,14 @@ class EnStrings implements AppStrings {
   String get currentEffect => 'Current Effect';
   @override
   String foundCount(int n) => 'Found $n devices';
+  @override
+  String onlineCount(int n) => '$n online';
+  @override
+  String deviceCount(int n) => '$n total';
+  @override
+  String get networkReady => 'Local network';
+  @override
+  String get networkUnavailable => 'Network unavailable';
 
   @override
   String get noFavorites => 'No Favorites';
@@ -891,7 +931,7 @@ class EnStrings implements AppStrings {
   String get scheduleTipTitle => 'Tip';
   @override
   String get scheduleTipContent =>
-      'Schedule can help you automatically turn off lights before sleep, or simulate a natural sunrise awakening process.';
+      'Sleep Timer can gradually dim the lights before bed or simulate a sunrise wake-up.';
 
   @override
   String get timerStatusScheduled => 'Will turn off/dim after timer';

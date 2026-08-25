@@ -4,6 +4,26 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
 
+class WledApiException implements Exception {
+  final String path;
+  final int? statusCode;
+  final String message;
+  final Object? cause;
+
+  const WledApiException({
+    required this.path,
+    required this.message,
+    this.statusCode,
+    this.cause,
+  });
+
+  @override
+  String toString() {
+    final status = statusCode == null ? '' : ' ($statusCode)';
+    return 'WledApiException$status at $path: $message';
+  }
+}
+
 /// WLED API 服务
 /// 负责与 WLED 设备的 HTTP 通信
 class WledApiService {
@@ -26,10 +46,19 @@ class WledApiService {
   /// 获取设备状态 (包含 info 注入)
   Future<WledState> getState() async {
     final response = await _get('/json');
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final state = WledState.fromJson(json['state'] as Map<String, dynamic>);
-    final info = WledInfo.fromJson(json['info'] as Map<String, dynamic>);
-    return state.copyWith(info: info);
+    try {
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final state = WledState.fromJson(json['state'] as Map<String, dynamic>);
+      final info = WledInfo.fromJson(json['info'] as Map<String, dynamic>);
+      return state.copyWith(info: info);
+    } catch (error) {
+      throw WledApiException(
+        path: '/json',
+        statusCode: response.statusCode,
+        message: '设备返回了无法解析的状态数据',
+        cause: error,
+      );
+    }
   }
 
   /// 获取设备信息
@@ -80,7 +109,7 @@ class WledApiService {
 
   /// 发送状态更新
   /// [payload] 是部分状态对象，如 {"on": true, "bri": 255}
-  Future<WledState?> setState(Map<String, dynamic> payload) async {
+  Future<WledState> setState(Map<String, dynamic> payload) async {
     // 强制使用 HTTP API 发送控制指令，以保证可靠性
     // (根据规范：控制指令首选 JSON API POST /json/state)
     // 并且这解决了 Android 模拟器等环境下 WebSocket 发包静默失败或丢包而无法控灯的问题
@@ -89,11 +118,17 @@ class WledApiService {
     bodyWithVerbosity['v'] = true;
 
     final response = await _post('/json/state', bodyWithVerbosity);
-    if (response.statusCode == 200) {
+    try {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       return WledState.fromJson(json);
+    } catch (error) {
+      throw WledApiException(
+        path: '/json/state',
+        statusCode: response.statusCode,
+        message: '设备返回了无法解析的状态数据',
+        cause: error,
+      );
     }
-    return null;
   }
 
   /// 开关控制
@@ -316,19 +351,15 @@ class WledApiService {
   // ============================================================================
 
   /// 设置定时关机 (Nightlight)
-  Future<WledState?> setNightlight({
-    bool? on,
-    int? duration,
-    int? targetBrightness,
-    int? mode,
-  }) {
-    final nl = <String, dynamic>{};
-    if (on != null) nl['on'] = on;
-    if (duration != null) nl['dur'] = duration;
-    if (targetBrightness != null) nl['tbri'] = targetBrightness;
-    if (mode != null) nl['mode'] = mode;
-
-    return setState({'nl': nl});
+  Future<WledState?> setNightlight(WledNightlight value) {
+    return setState({
+      'nl': {
+        'on': value.on,
+        'dur': value.dur,
+        'mode': value.mode,
+        'tbri': value.tbri,
+      },
+    });
   }
 
   /// 设置同步 (UDP Sync)
@@ -412,7 +443,18 @@ class WledApiService {
 
   Future<http.Response> _get(String path) async {
     final uri = Uri.parse('$baseUrl$path');
-    return _client.get(uri).timeout(timeout);
+    try {
+      final response = await _client.get(uri).timeout(timeout);
+      return _requireSuccess(path, response);
+    } on WledApiException {
+      rethrow;
+    } catch (error) {
+      throw WledApiException(
+        path: path,
+        message: '无法连接到 WLED 设备',
+        cause: error,
+      );
+    }
   }
 
   Future<http.Response> _post(String path, Map<String, dynamic> body) async {
@@ -428,11 +470,29 @@ class WledApiService {
       debugPrint(
         '[API] POST $path to $baseUrl returned ${response.statusCode}',
       );
-      return response;
-    } catch (e) {
-      debugPrint('[API] POST $path to $baseUrl failed: $e');
+      return _requireSuccess(path, response);
+    } on WledApiException catch (error) {
+      debugPrint('[API] POST $path to $baseUrl failed: $error');
       rethrow;
+    } catch (error) {
+      debugPrint('[API] POST $path to $baseUrl failed: $error');
+      throw WledApiException(
+        path: path,
+        message: '无法连接到 WLED 设备',
+        cause: error,
+      );
     }
+  }
+
+  http.Response _requireSuccess(String path, http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return response;
+    }
+    throw WledApiException(
+      path: path,
+      statusCode: response.statusCode,
+      message: response.body.isEmpty ? '设备请求失败' : response.body,
+    );
   }
 
   void dispose() {

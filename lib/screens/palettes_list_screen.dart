@@ -216,46 +216,38 @@ class _PalettesListScreenState extends ConsumerState<PalettesListScreen> {
                         final isSelected = currentPal == palIdx;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child:
-                              _PaletteTile(
-                                    englishName: name,
-                                    chineseName: isZh
-                                        ? getPaletteChineseName(name)
-                                        : null,
-                                    index: palIdx,
-                                    isFavorite: favs.contains(palIdx),
-                                    onFavoriteToggle: () => favsService
-                                        .togglePaletteFavorite(palIdx),
-                                    isSelected: isSelected,
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      final sid = widget.segmentId;
-                                      ref
-                                          .read(deviceStateProvider.notifier)
-                                          .optimisticUpdate(
-                                            (s) => s.copyWith(
-                                              ps: -1, // Clear preset selection when a palette is chosen
-                                              seg: s.seg
-                                                  .map(
-                                                    (seg) => seg.id == sid
-                                                        ? seg.copyWith(
-                                                            pal: palIdx,
-                                                          )
-                                                        : seg,
-                                                  )
-                                                  .toList(),
-                                            ),
-                                            () => api!.setSegmentState(
-                                              sid,
-                                              pal: palIdx,
-                                            ),
-                                          );
-                                      Navigator.pop(context);
-                                    },
-                                  )
-                                  .animate()
-                                  .fadeIn(delay: (index * 15).ms)
-                                  .slideX(begin: 0.05),
+                          child: _PaletteTile(
+                            englishName: name,
+                            chineseName: isZh
+                                ? getPaletteChineseName(name)
+                                : null,
+                            index: palIdx,
+                            isFavorite: favs.contains(palIdx),
+                            onFavoriteToggle: () =>
+                                favsService.togglePaletteFavorite(palIdx),
+                            isSelected: isSelected,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              final sid = widget.segmentId;
+                              ref
+                                  .read(currentDeviceSessionNotifierProvider)
+                                  .optimisticUpdate(
+                                    (s) => s.copyWith(
+                                      ps: -1, // Clear preset selection when a palette is chosen
+                                      seg: s.seg
+                                          .map(
+                                            (seg) => seg.id == sid
+                                                ? seg.copyWith(pal: palIdx)
+                                                : seg,
+                                          )
+                                          .toList(),
+                                    ),
+                                    () =>
+                                        api!.setSegmentState(sid, pal: palIdx),
+                                  );
+                              Navigator.pop(context);
+                            },
+                          ).animate().fadeIn(delay: (index * 15).ms).slideX(begin: 0.05),
                         );
                       },
                     );

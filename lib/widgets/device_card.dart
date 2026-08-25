@@ -6,7 +6,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/core.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
-import '../services/services.dart';
 import 'widgets.dart';
 
 /// 设备卡片组件 - 玻璃态 + 动态光效
@@ -30,10 +29,11 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
   double? _localBrightness;
 
   Color _getDeviceColor(WledState? state) {
-    if (state == null || state.seg.isEmpty || state.seg.first.col.isEmpty) {
+    final segment = state?.mainSegment;
+    if (segment == null || segment.col.isEmpty) {
       return FluxTheme.primary;
     }
-    final col = state.seg.first.col.first;
+    final col = segment.col.first;
     if (col.length >= 3) {
       return Color.fromARGB(255, col[0], col[1], col[2]);
     }
@@ -303,21 +303,31 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         ),
       ),
       child: Center(
-        child: Icon(
-          !isOnline
-              ? Icons.cloud_off_rounded
-              : (isOn
-                    ? Icons.lightbulb_rounded
-                    : Icons.lightbulb_outline_rounded),
-          color: !isOnline
-              ? (isDark ? Colors.white.withValues(alpha: 0.25) : Colors.black26)
-              : (isOn
-                    ? color
-                    : (isDark
-                          ? Colors.white.withValues(alpha: 0.35)
-                          : Colors.black26)),
-          size: 24,
-        ),
+        child:
+            Icon(
+                  !isOnline
+                      ? Icons.cloud_off_rounded
+                      : (isOn
+                            ? Icons.lightbulb_rounded
+                            : Icons.lightbulb_outline_rounded),
+                  color: !isOnline
+                      ? (isDark
+                            ? Colors.white.withValues(alpha: 0.25)
+                            : Colors.black26)
+                      : (isOn
+                            ? color
+                            : (isDark
+                                  ? Colors.white.withValues(alpha: 0.35)
+                                  : Colors.black26)),
+                  size: 24,
+                )
+                .animate(target: (isOnline && isOn) ? 1.0 : 0.0)
+                .scale(
+                  begin: const Offset(1.0, 1.0),
+                  end: const Offset(1.12, 1.12),
+                  duration: 1500.ms,
+                  curve: Curves.easeInOut,
+                ),
       ),
     );
   }
@@ -336,16 +346,11 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         final notifier = ref.read(
           deviceFamilyStateProvider(widget.device.id).notifier,
         );
+        final api = notifier.api;
+        if (api == null) return;
         notifier.optimisticUpdate(
           (s) => s.copyWith(ps: -1, on: !isOn),
-          () async {
-            final api = WledApiService(baseUrl: widget.device.baseUrl);
-            try {
-              return await api.setOn(!isOn);
-            } finally {
-              api.dispose();
-            }
-          },
+          () => api.setOn(!isOn),
         );
       },
       child: AnimatedContainer(
@@ -449,21 +454,15 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
               onChangeEnd: (v) {
                 setState(() => _localBrightness = null);
                 final bri = v.round();
-                ref
-                    .read(deviceFamilyStateProvider(widget.device.id).notifier)
-                    .optimisticUpdate(
-                      (s) => s.copyWith(ps: -1, on: bri > 0, bri: bri),
-                      () async {
-                        final api = WledApiService(
-                          baseUrl: widget.device.baseUrl,
-                        );
-                        try {
-                          return await api.setBrightness(bri);
-                        } finally {
-                          api.dispose();
-                        }
-                      },
-                    );
+                final notifier = ref.read(
+                  deviceFamilyStateProvider(widget.device.id).notifier,
+                );
+                final api = notifier.api;
+                if (api == null) return;
+                notifier.optimisticUpdate(
+                  (s) => s.copyWith(ps: -1, on: bri > 0, bri: bri),
+                  () => api.setBrightness(bri),
+                );
               },
             ),
           ),

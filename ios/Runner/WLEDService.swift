@@ -215,7 +215,7 @@ let wledEffectTranslations: [String: String] = [
 /// 翻译效果名称（英文 → 中文）
 func translateEffectName(_ name: String) -> String {
     // 获取系统是否使用中文
-    let isChinese = Locale.current.languageCode?.hasPrefix("zh") == true
+    let isChinese = Locale.current.language.languageCode?.identifier.hasPrefix("zh") == true
     
     // 如果不是中文环境，直接返回原英文名
     guard isChinese else { return name }
@@ -233,4 +233,3 @@ func translateEffectName(_ name: String) -> String {
     }
     return name
 }
-

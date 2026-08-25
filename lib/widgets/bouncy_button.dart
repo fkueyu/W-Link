@@ -9,6 +9,10 @@ class BouncyButton extends StatefulWidget {
   final VoidCallback? onLongPress;
   final double scaleTarget;
   final Duration duration;
+  final String? semanticLabel;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final bool? selected;
 
   const BouncyButton({
     super.key,
@@ -17,6 +21,10 @@ class BouncyButton extends StatefulWidget {
     this.onLongPress,
     this.scaleTarget = 0.95,
     this.duration = const Duration(milliseconds: 100),
+    this.semanticLabel,
+    this.focusNode,
+    this.autofocus = false,
+    this.selected,
   });
 
   @override
@@ -27,6 +35,7 @@ class _BouncyButtonState extends State<BouncyButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
+  bool _showFocusHighlight = false;
 
   @override
   void initState() {
@@ -69,15 +78,68 @@ class _BouncyButtonState extends State<BouncyButton>
     _controller.forward();
   }
 
+  bool get _isEnabled => widget.onTap != null || widget.onLongPress != null;
+
+  void _activate() {
+    if (widget.onTap == null) return;
+    widget.onTap?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
+    return Semantics(
+      button: true,
+      enabled: _isEnabled,
+      selected: widget.selected,
+      label: widget.semanticLabel,
+      excludeSemantics: widget.semanticLabel != null,
+      onTap: widget.onTap == null ? null : _activate,
       onLongPress: widget.onLongPress,
-      behavior: HitTestBehavior.opaque,
-      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
+      child: FocusableActionDetector(
+        enabled: widget.onTap != null,
+        focusNode: widget.focusNode,
+        autofocus: widget.autofocus,
+        mouseCursor: widget.onTap == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        shortcuts: const <ShortcutActivator, Intent>{
+          SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+          SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+        },
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              _activate();
+              return null;
+            },
+          ),
+        },
+        onShowFocusHighlight: (show) {
+          if (_showFocusHighlight == show) return;
+          setState(() => _showFocusHighlight = show);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _showFocusHighlight
+                  ? const Color(0xFFAF47FF)
+                  : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          child: GestureDetector(
+            onTapDown: _handleTapDown,
+            onTapUp: _handleTapUp,
+            onTapCancel: _handleTapCancel,
+            onLongPress: widget.onLongPress,
+            excludeFromSemantics: true,
+            behavior: HitTestBehavior.opaque,
+            child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/core.dart';
 import '../models/models.dart';
@@ -51,329 +53,380 @@ class DeviceListScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _refreshDevices(WidgetRef ref, List<WledDevice> devices) async {
+    await Future.wait(
+      devices.map(
+        (device) => ref
+            .read(deviceFamilyStateProvider(device.id).notifier)
+            .forceRefresh(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final devices = ref.watch(deviceListProvider);
     final l10n = ref.watch(l10nProvider);
     final isWifiConnected = ref.watch(isWifiConnectedProvider);
+    final onlineDevices = devices.where((device) => device.isOnline).length;
 
     return Scaffold(
-      body: AnimatedBackground(
+      backgroundColor: _isEmbedded ? Colors.transparent : null,
+      body: _DeviceListBackground(
+        embedded: _isEmbedded,
         child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              // 顶部标题
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 16, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                BouncyButton(
-                                  onTap:
-                                      () {}, // Could show app info or easter egg
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color:
-                                              Theme.of(context).brightness ==
+          child: RefreshIndicator(
+            onRefresh: () async {
+              HapticFeedback.mediumImpact();
+              await _refreshDevices(ref, devices);
+            },
+            color: FluxTheme.primary,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 16, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Semantics(
+                                    image: true,
+                                    label: l10n.appTitle,
+                                    excludeSemantics: true,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.black.withValues(
+                                                    alpha: 0.3,
+                                                  )
+                                                : FluxTheme.primary.withValues(
+                                                    alpha: 0.15,
+                                                  ),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(14),
+                                        child: Image.asset(
+                                          Theme.of(context).brightness ==
                                                   Brightness.dark
-                                              ? Colors.black.withValues(
-                                                  alpha: 0.3,
-                                                )
-                                              : FluxTheme.primary.withValues(
-                                                  alpha: 0.15,
-                                                ),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
+                                              ? 'assets/icons/icon_dark.png'
+                                              : 'assets/icons/icon_light.png',
+                                          width: 44,
+                                          height: 44,
+                                        ),
+                                      ),
+                                    ),
+                                  ).animate().scale(
+                                    duration: 600.ms,
+                                    curve: Curves.easeOutBack,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Flexible(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          l10n.appTitle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headlineSmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w900,
+                                                letterSpacing: -0.5,
+                                              ),
+                                        ),
+                                        Text(
+                                          l10n.controllers,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white38
+                                                : Colors.black38,
+                                            letterSpacing: 0.2,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: Image.asset(
-                                        Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? 'assets/icons/icon_dark.png'
-                                            : 'assets/icons/icon_light.png',
-                                        width: 44,
-                                        height: 44,
-                                      ),
-                                    ),
                                   ),
-                                ).animate().scale(
-                                  duration: 600.ms,
-                                  curve: Curves.easeOutBack,
+                                ],
+                              ),
+                            ),
+
+                            // Action buttons
+                            BouncyButton(
+                              semanticLabel: l10n.search,
+                              onTap: () => _navigateToDiscovery(context),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.black.withValues(alpha: 0.04),
+                                  shape: BoxShape.circle,
                                 ),
-                                const SizedBox(width: 14),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      l10n.appTitle,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -0.5,
+                                child: const Icon(
+                                  Icons.search_rounded,
+                                  size: 22,
+                                  color: FluxTheme.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            PopupMenuButton<String>(
+                              padding: EdgeInsets.zero,
+                              icon: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.black.withValues(alpha: 0.04),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.more_horiz_rounded,
+                                  size: 22,
+                                ),
+                              ),
+                              offset: const Offset(0, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              elevation: 12,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? FluxTheme.cardDark
+                                  : Colors.white.withValues(alpha: 0.98),
+                              onSelected: (value) {
+                                if (value == 'groups') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const GroupsManagementScreen(),
+                                    ),
+                                  );
+                                } else if (value == 'settings') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SettingsScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'groups',
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: FluxTheme.primary.withValues(
+                                            alpha: 0.1,
                                           ),
-                                    ),
-                                    Text(
-                                      l10n.controllers,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color:
-                                            Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? Colors.white38
-                                            : Colors.black38,
-                                        letterSpacing: 0.2,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.layers_rounded,
+                                          size: 18,
+                                          color: FluxTheme.primary,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        l10n.deviceGroups,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'settings',
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.settings_rounded,
+                                          size: 18,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        l10n.settings,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-
-                          // Action buttons
-                          BouncyButton(
-                            onTap: () => _navigateToDiscovery(context),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color:
-                                    Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.04),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.search_rounded,
-                                size: 22,
-                                color: FluxTheme.primary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          PopupMenuButton<String>(
-                            padding: EdgeInsets.zero,
-                            icon: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color:
-                                    Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.04),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.more_horiz_rounded,
-                                size: 22,
-                              ),
-                            ),
-                            offset: const Offset(0, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            elevation: 12,
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? FluxTheme.cardDark
-                                : Colors.white.withValues(alpha: 0.98),
-                            onSelected: (value) {
-                              if (value == 'groups') {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const GroupsManagementScreen(),
-                                  ),
-                                );
-                              } else if (value == 'settings') {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const SettingsScreen(),
-                                  ),
-                                );
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              PopupMenuItem(
-                                value: 'groups',
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: FluxTheme.primary.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(
-                                        Icons.layers_rounded,
-                                        size: 18,
-                                        color: FluxTheme.primary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      l10n.deviceGroups,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              PopupMenuItem(
-                                value: 'settings',
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(
-                                        Icons.settings_rounded,
-                                        size: 18,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      l10n.settings,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(
-                    l10n.myDevices,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                      fontSize: 22,
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-              // 网络状态提示
-              if (!isWifiConnected)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.2),
+                    padding: const EdgeInsets.fromLTRB(24, 0, 16, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.myDevices,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.5,
+                                  fontSize: 22,
+                                ),
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.wifi_off_rounded,
-                            color: Colors.orange,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              l10n.noWifiWarning,
-                              style: const TextStyle(
-                                color: Colors.orange,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        const SizedBox(width: 12),
+                        DeviceOverviewBar(
+                          totalDevices: devices.length,
+                          onlineDevices: onlineDevices,
+                          isWifiConnected: isWifiConnected,
+                          strings: l10n,
+                          onRefresh: () => _refreshDevices(ref, devices),
+                        ),
+                      ],
                     ),
                   ),
                 ),
 
-              // 设备列表
-              if (devices.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: EmptyState(
-                    icon: isWifiConnected
-                        ? Icons.lightbulb_outline
-                        : Icons.wifi_off_rounded,
-                    title: isWifiConnected
-                        ? l10n.noDevices
-                        : l10n.notConnectedToLan,
-                    message: isWifiConnected
-                        ? l10n.addFirstDeviceHint
-                        : l10n.wifiRequiredHint,
-                    onAction: () => _navigateToDiscovery(context),
-                    actionLabel: isWifiConnected
-                        ? l10n.addDevice
-                        : l10n.goToConnectWifi,
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+                // 网络状态提示
+                if (!isWifiConnected)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.orange.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.wifi_off_rounded,
+                              color: Colors.orange,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                l10n.noWifiWarning,
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final device = devices[index];
-                      return DeviceCard(
-                            device: device,
-                            onTap: () =>
-                                _navigateToControl(context, ref, device),
-                            onDelete: () {
-                              ref
-                                  .read(deviceListProvider.notifier)
-                                  .removeDevice(device.id);
-                            },
-                          )
-                          .animate()
-                          .fadeIn(delay: (index * 100).ms)
-                          .slideX(begin: 0.1);
-                    }, childCount: devices.length),
+
+                // 设备列表
+                if (devices.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: EmptyState(
+                      icon: isWifiConnected
+                          ? Icons.lightbulb_outline
+                          : Icons.wifi_off_rounded,
+                      title: isWifiConnected
+                          ? l10n.noDevices
+                          : l10n.notConnectedToLan,
+                      message: isWifiConnected
+                          ? l10n.addFirstDeviceHint
+                          : l10n.wifiRequiredHint,
+                      onAction: () => _navigateToDiscovery(context),
+                      actionLabel: isWifiConnected
+                          ? l10n.addDevice
+                          : l10n.goToConnectWifi,
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final device = devices[index];
+                        return DeviceCard(
+                              device: device,
+                              onTap: () =>
+                                  _navigateToControl(context, ref, device),
+                              onDelete: () {
+                                ref
+                                    .read(deviceListProvider.notifier)
+                                    .removeDevice(device.id);
+                              },
+                            )
+                            .animate()
+                            .fadeIn(delay: (index * 100).ms)
+                            .slideX(begin: 0.1);
+                      }, childCount: devices.length),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -443,5 +496,17 @@ class DeviceListScreen extends ConsumerWidget {
                   duration: 800.ms,
                 ),
     );
+  }
+}
+
+class _DeviceListBackground extends StatelessWidget {
+  const _DeviceListBackground({required this.embedded, required this.child});
+
+  final bool embedded;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return embedded ? child : AnimatedBackground(child: child);
   }
 }

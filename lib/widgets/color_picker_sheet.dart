@@ -1,12 +1,15 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/core.dart';
+import '../providers/providers.dart';
+import 'app_toast.dart';
 
 /// 颜色选择底部弹窗 (Custom HS Disc Version)
-class ColorPickerSheet extends StatefulWidget {
+class ColorPickerSheet extends ConsumerStatefulWidget {
   final Color initialColor;
-  final ValueChanged<Color> onColorChanged;
+  final Future<void> Function(Color) onColorChanged;
 
   const ColorPickerSheet({
     super.key,
@@ -15,35 +18,36 @@ class ColorPickerSheet extends StatefulWidget {
   });
 
   @override
-  State<ColorPickerSheet> createState() => _ColorPickerSheetState();
+  ConsumerState<ColorPickerSheet> createState() => _ColorPickerSheetState();
 }
 
-class _ColorPickerSheetState extends State<ColorPickerSheet> {
+class _ColorPickerSheetState extends ConsumerState<ColorPickerSheet> {
   late Color _currentColor;
-
-  // 常用预设颜色 (保持不变)
-  static const List<Color> _presetColors = [
-    Color(0xFFFF0000), // Red
-    Color(0xFFFFA500), // Orange
-    Color(0xFFFFD700), // Gold/Yellow
-    Color(0xFF008000), // Green
-    Color(0xFF00CED1), // Dark Turquoise
-    Color(0xFF00BFFF), // Deep Sky Blue
-    Color(0xFF0000FF), // Blue
-    Color(0xFF4B0082), // Indigo
-    Color(0xFF800080), // Purple
-    Color(0xFFFF1493), // Deep Pink
-    Color(0xFFFFFFFF), // White
-  ];
+  late final LatestValueDispatcher<Color> _dispatcher;
 
   @override
   void initState() {
     super.initState();
     _currentColor = widget.initialColor;
+    _dispatcher = LatestValueDispatcher<Color>(widget.onColorChanged);
+  }
+
+  void _selectColor(Color color) {
+    setState(() => _currentColor = color);
+    _dispatcher.submit(color);
+  }
+
+  @override
+  void dispose() {
+    _dispatcher.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final presetColors = ref.watch(quickColorPaletteProvider);
+    final l10n = ref.watch(l10nProvider);
+
     return Container(
       decoration:
           FluxTheme.glassDecoration(
@@ -78,37 +82,63 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
                 aspectRatio: 1,
                 child: _HSColorWheel(
                   color: _currentColor,
-                  onChanged: (color) {
-                    setState(() => _currentColor = color);
-                    widget.onColorChanged(color);
-                  },
+                  onChanged: _selectColor,
                 ),
               ),
             ),
 
             const SizedBox(height: 32),
 
-            // 预设颜色栏 (优化样式)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Text(
+                    l10n.quickColors,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    l10n.longPressColorToSave,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 快捷颜色栏
             SizedBox(
               height: 70, // Increased height for shadows and scaling
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none, // Prevent shadow clipping
-                itemCount: _presetColors.length,
+                itemCount: presetColors.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
-                  final color = _presetColors[index];
+                  final color = presetColors[index];
                   final isSelected =
                       _currentColor.toARGB32() == color.toARGB32();
 
                   return Center(
                     // Center align to allow growth
                     child: GestureDetector(
+                      key: ValueKey('quick-color-$index'),
                       onTap: () {
                         HapticFeedback.lightImpact();
-                        setState(() => _currentColor = color);
-                        widget.onColorChanged(color);
+                        _selectColor(color);
+                      },
+                      onLongPress: () async {
+                        HapticFeedback.heavyImpact();
+                        await ref
+                            .read(quickColorPaletteProvider.notifier)
+                            .replace(index, _currentColor);
+                        if (context.mounted) {
+                          AppToast.success(context, l10n.quickColorSaved);
+                        }
                       },
                       child: AnimatedContainer(
                         duration: const Duration(

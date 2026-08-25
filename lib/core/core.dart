@@ -4,3 +4,4 @@ export 'extensions.dart';
 export 'l10n.dart';
 export 'effect_translations.dart';
 export 'platform_utils.dart';
+export 'latest_value_dispatcher.dart';
