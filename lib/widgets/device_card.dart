@@ -507,19 +507,16 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
         child:
             Material(
                   type: MaterialType.transparency,
-                  child: Container(
-                    margin: const EdgeInsets.all(32),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: isDark ? FluxTheme.cardDark : Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 40,
-                        ),
-                      ],
-                    ),
+                  child: FluxDialogCard(
+                    isDark: isDark,
+                    radius: 28,
+                    backgroundColor: isDark ? FluxTheme.cardDark : Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 40,
+                      ),
+                    ],
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

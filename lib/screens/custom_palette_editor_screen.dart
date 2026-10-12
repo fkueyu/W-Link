@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -75,15 +76,18 @@ class _CustomPaletteEditorScreenState
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Text(
-                      l10n.customPalette,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
+                    Expanded(
+                      child: Text(
+                        l10n.customPalette,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                      ),
                     ),
-                    const Spacer(),
                     _buildSlotPicker(isDark, l10n),
                   ],
                 ),
@@ -477,13 +481,9 @@ class _CustomPaletteEditorScreenState
           Center(
                 child: Material(
                   type: MaterialType.transparency,
-                  child: Container(
-                    margin: const EdgeInsets.all(32),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                    ),
+                  child: FluxDialogCard(
+                    isDark: isDark,
+                    radius: 28,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -495,16 +495,31 @@ class _CustomPaletteEditorScreenState
                           ),
                         ),
                         const SizedBox(height: 24),
-                        ColorPicker(
-                          color: stop.color,
-                          onColorChanged: (color) =>
-                              setState(() => stop.color = color),
-                          pickersEnabled: const {
-                            ColorPickerType.wheel: true,
-                            ColorPickerType.accent: false,
-                            ColorPickerType.primary: false,
+                        // 色轮内部是 Stack(fit: StackFit.expand)，必须拿到确定边长，
+                        // 否则在滚动容器里高度无界会直接报错；边长按弹窗内容预算推导，
+                        // 保证外屏（宽而矮）与半折姿态都不溢出。
+                        Builder(
+                          builder: (context) {
+                            final content = fluxDialogContentSize(context);
+                            final side = math
+                                .min(content.width, content.height - 116)
+                                .clamp(120.0, 280.0);
+                            return SizedBox(
+                              width: side,
+                              height: side,
+                              child: ColorPicker(
+                                color: stop.color,
+                                onColorChanged: (color) =>
+                                    setState(() => stop.color = color),
+                                pickersEnabled: const {
+                                  ColorPickerType.wheel: true,
+                                  ColorPickerType.accent: false,
+                                  ColorPickerType.primary: false,
+                                },
+                                enableShadesSelection: false,
+                              ),
+                            );
                           },
-                          enableShadesSelection: false,
                         ),
                         const SizedBox(height: 24),
                         Row(

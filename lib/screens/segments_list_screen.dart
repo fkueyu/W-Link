@@ -53,15 +53,18 @@ class _SegmentsListScreenState extends ConsumerState<SegmentsListScreen> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Text(
-                      l10n.segments,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
+                    Expanded(
+                      child: Text(
+                        l10n.segments,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                      ),
                     ),
-                    const Spacer(),
                     const SizedBox(width: 8),
                     BouncyButton(
                       onTap: () => _showAddSegmentDialog(context, api),
@@ -424,13 +427,9 @@ class _SegmentsListScreenState extends ConsumerState<SegmentsListScreen> {
           Center(
                 child: Material(
                   type: MaterialType.transparency,
-                  child: Container(
-                    margin: const EdgeInsets.all(32),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                    ),
+                  child: FluxDialogCard(
+                    isDark: isDark,
+                    radius: 28,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

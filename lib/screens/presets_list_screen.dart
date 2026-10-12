@@ -56,15 +56,18 @@ class _PresetsListScreenState extends ConsumerState<PresetsListScreen> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Text(
-                      l10n.presets,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
+                    Expanded(
+                      child: Text(
+                        l10n.presets,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                      ),
                     ),
-                    const Spacer(),
                     BouncyButton(
                       onTap: () => ref.invalidate(presetsProvider),
                       child: Container(
@@ -578,13 +581,8 @@ class _PresetsListScreenState extends ConsumerState<PresetsListScreen> {
         child:
             Material(
                   type: MaterialType.transparency,
-                  child: Container(
-                    margin: const EdgeInsets.all(32),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
+                  child: FluxDialogCard(
+                    isDark: isDark,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

@@ -57,130 +57,165 @@ class _ColorPickerSheetState extends ConsumerState<ColorPickerSheet> {
           ).copyWith(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 24),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 色盘之外固定占用的高度（手柄 40 + 间距 32 + 标题行 22 + 间距 12
+          // + 快捷色条 70 + 底部 24）。色盘高度必须由这份预算推导：只按宽度取
+          // 正方形时，「宽而矮」的外屏会把色盘撑到屏幕之外。
+          const chromeHeight = 200.0;
+          final safeBottom = MediaQuery.paddingOf(context).bottom;
+          final available = constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : MediaQuery.sizeOf(context).height;
+          final wheelSide = math
+              .min(
+                constraints.maxWidth - 80,
+                available - chromeHeight - safeBottom,
+              )
+              .clamp(96.0, 320.0);
 
-            // 自定义 HS 色盘
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: _HSColorWheel(
-                  color: _currentColor,
-                  onChanged: _selectColor,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    l10n.quickColors,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+                  // Handle
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 24),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    l10n.longPressColorToSave,
-                    style: Theme.of(context).textTheme.bodySmall,
+
+                  // 自定义 HS 色盘（边长由上面的高度预算决定，任何姿态都不溢出）
+                  Center(
+                    child: SizedBox(
+                      key: const ValueKey('color-wheel'),
+                      width: wheelSide,
+                      height: wheelSide,
+                      child: _HSColorWheel(
+                        color: _currentColor,
+                        onChanged: _selectColor,
+                      ),
+                    ),
                   ),
+
+                  const SizedBox(height: 32),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        // 两段文案都必须可收缩：窄屏（折叠外屏 / 分屏）下
+                        // 固定宽度会直接把这一行撑破。
+                        Flexible(
+                          child: Text(
+                            l10n.quickColors,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            l10n.longPressColorToSave,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 快捷颜色栏
+                  SizedBox(
+                    height: 70, // Increased height for shadows and scaling
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none, // Prevent shadow clipping
+                      itemCount: presetColors.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 16),
+                      itemBuilder: (context, index) {
+                        final color = presetColors[index];
+                        final isSelected =
+                            _currentColor.toARGB32() == color.toARGB32();
+
+                        return Center(
+                          // Center align to allow growth
+                          child: GestureDetector(
+                            key: ValueKey('quick-color-$index'),
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              _selectColor(color);
+                            },
+                            onLongPress: () async {
+                              HapticFeedback.heavyImpact();
+                              await ref
+                                  .read(quickColorPaletteProvider.notifier)
+                                  .replace(index, _currentColor);
+                              if (context.mounted) {
+                                AppToast.success(context, l10n.quickColorSaved);
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(
+                                milliseconds: 200,
+                              ), // Assuming 200.ms is an extension
+                              width: isSelected ? 48 : 40,
+                              height: isSelected ? 48 : 40,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.4),
+                                    blurRadius: isSelected ? 12 : 6,
+                                    spreadRadius: isSelected ? 2 : 0,
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: isSelected
+                                  ? Icon(
+                                      Icons.check,
+                                      color: color.computeLuminance() > 0.5
+                                          ? Colors.black
+                                          : Colors.white,
+                                      size: 24,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-
-            // 快捷颜色栏
-            SizedBox(
-              height: 70, // Increased height for shadows and scaling
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none, // Prevent shadow clipping
-                itemCount: presetColors.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 16),
-                itemBuilder: (context, index) {
-                  final color = presetColors[index];
-                  final isSelected =
-                      _currentColor.toARGB32() == color.toARGB32();
-
-                  return Center(
-                    // Center align to allow growth
-                    child: GestureDetector(
-                      key: ValueKey('quick-color-$index'),
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        _selectColor(color);
-                      },
-                      onLongPress: () async {
-                        HapticFeedback.heavyImpact();
-                        await ref
-                            .read(quickColorPaletteProvider.notifier)
-                            .replace(index, _currentColor);
-                        if (context.mounted) {
-                          AppToast.success(context, l10n.quickColorSaved);
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(
-                          milliseconds: 200,
-                        ), // Assuming 200.ms is an extension
-                        width: isSelected ? 48 : 40,
-                        height: isSelected ? 48 : 40,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: color.withValues(alpha: 0.4),
-                              blurRadius: isSelected ? 12 : 6,
-                              spreadRadius: isSelected ? 2 : 0,
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: isSelected
-                            ? Icon(
-                                Icons.check,
-                                color: color.computeLuminance() > 0.5
-                                    ? Colors.black
-                                    : Colors.white,
-                                size: 24,
-                              )
-                            : null,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 24),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

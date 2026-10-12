@@ -43,13 +43,17 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Text(
-                      l10n.settings,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
+                    Expanded(
+                      child: Text(
+                        l10n.settings,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                      ),
                     ),
                   ],
                 ),
@@ -524,13 +528,9 @@ class SettingsScreen extends ConsumerWidget {
           Center(
                 child: Material(
                   type: MaterialType.transparency,
-                  child: Container(
-                    margin: const EdgeInsets.all(32),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: isDark ? FluxTheme.cardDark : Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
+                  child: FluxDialogCard(
+                    isDark: isDark,
+                    backgroundColor: isDark ? FluxTheme.cardDark : Colors.white,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

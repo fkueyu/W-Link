@@ -61,15 +61,18 @@ class _PalettesListScreenState extends ConsumerState<PalettesListScreen> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Text(
-                      l10n.selectPalette,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
+                    Expanded(
+                      child: Text(
+                        l10n.selectPalette,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                      ),
                     ),
-                    const Spacer(),
                     BouncyButton(
                       onTap: () =>
                           setState(() => _showFavorites = !_showFavorites),

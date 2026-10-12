@@ -19,6 +19,30 @@ import 'presets_list_screen.dart';
 import 'segments_list_screen.dart';
 import 'nightlight_screen.dart';
 
+/// 顶部玻璃导航条的基础高度（不含系统保留区域）。
+///
+/// 内容偏移必须由它推导：折叠屏外屏/内屏的 `padding.top` 会随保留区域变化，
+/// 另外写死一个「80」会让标题被玻璃条压住。
+const double _kTopBarBaseHeight = 64;
+
+/// 玻璃条与首屏内容之间的留白。
+const double _kTopBarGap = 16;
+
+/// 双栏嵌入模式（没有玻璃条）时首屏内容的顶部留白。
+const double _kEmbeddedTopGap = 20;
+
+/// 主内容列的最大宽度：过窄会在平板/折叠内屏留下大片空白，
+/// 过宽会让控制项离拇指太远。
+const double _kContentMaxWidth = 680;
+
+/// 快速操作瓦片的固定高度。用固定高度而不是宽高比：宽高比会让瓦片高度
+/// 随可用宽度漂移，窄屏被压扁、宽屏被拉高。
+const double _kActionTileHeight = 84;
+
+/// 顶部玻璃导航条的完整高度（含系统保留区域）。
+double _topBarHeight(BuildContext context) =>
+    _kTopBarBaseHeight + MediaQuery.paddingOf(context).top;
+
 /// 设备控制中心 - 核心交互页面
 class DeviceControlScreen extends ConsumerStatefulWidget {
   final WledDevice device;
@@ -97,9 +121,9 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                     child: Container(
-                      height: 64 + MediaQuery.of(context).padding.top,
+                      height: _topBarHeight(context),
                       padding: EdgeInsets.only(
-                        top: MediaQuery.of(context).padding.top,
+                        top: MediaQuery.paddingOf(context).top,
                       ),
                       decoration: BoxDecoration(
                         color: isDark
@@ -244,12 +268,16 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
+        constraints: const BoxConstraints(maxWidth: _kContentMaxWidth),
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: SizedBox(height: widget.embedded ? 20 : 80),
+              child: SizedBox(
+                height: widget.embedded
+                    ? _kEmbeddedTopGap
+                    : _topBarHeight(context) + _kTopBarGap,
+              ),
             ), // Space for glass bar
             // 1. Unified Control Hero
             SliverToBoxAdapter(
@@ -413,20 +441,16 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       builder: (ctx) => Center(
         child: Material(
           type: MaterialType.transparency,
-          child: Container(
-            margin: const EdgeInsets.all(32),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
+          child: FluxDialogCard(
+            isDark: isDark,
+            radius: 28,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -759,140 +783,139 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       }
     }
 
-    return SliverGrid.count(
-      crossAxisCount: 2,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.2,
-      children:
-          [
-                _buildActionTile(
-                  l10n.effect,
-                  fxLabel,
-                  Icons.auto_awesome_rounded,
-                  Colors.purpleAccent,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EffectsListScreen(
-                        segmentId: state.mainSegment?.id ?? state.mainSeg,
+    return SliverGrid(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        mainAxisExtent: _kActionTileHeight,
+      ),
+      delegate: SliverChildListDelegate(
+        [
+              _buildActionTile(
+                l10n.effect,
+                fxLabel,
+                Icons.auto_awesome_rounded,
+                Colors.purpleAccent,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EffectsListScreen(
+                      segmentId: state.mainSegment?.id ?? state.mainSeg,
+                    ),
+                  ),
+                ),
+                isDark,
+              ),
+              _buildActionTile(
+                l10n.palette,
+                palLabel,
+                Icons.palette_rounded,
+                Colors.orangeAccent,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PalettesListScreen(
+                      segmentId: state.mainSegment?.id ?? state.mainSeg,
+                    ),
+                  ),
+                ),
+                isDark,
+              ),
+              _buildActionTile(
+                l10n.presets,
+                state.ps > 0
+                    ? (presetsAsync.valueOrNull?.firstWhere(
+                            (p) {
+                              if (p.id == state.ps) {
+                                return true;
+                              }
+                              return false;
+                            },
+                            orElse: () => WledPreset(
+                              id: state.ps,
+                              name: 'Preset ${state.ps}',
+                            ),
+                          ).name ??
+                          'Preset ${state.ps}')
+                    : l10n.notSelected,
+                Icons.bookmark_rounded,
+                Colors.tealAccent,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PresetsListScreen()),
+                ),
+                isDark,
+              ),
+              _buildActionTile(
+                l10n.segments,
+                '${state.seg.length} ${l10n.segment}',
+                Icons.view_column_rounded,
+                Colors.indigoAccent,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SegmentsListScreen()),
+                ),
+                isDark,
+              ),
+              _buildActionTile(
+                l10n.color,
+                null,
+                Icons.color_lens_rounded,
+                FluxTheme.primary,
+                () => _showColorPicker(
+                  context,
+                  state.primaryColor != null
+                      ? ColorExtension.fromRgbList(state.primaryColor!)
+                      : Colors.white,
+                  api,
+                  state.mainSegment?.id ?? state.mainSeg,
+                ),
+                isDark,
+                subWidget: Row(
+                  children: [
+                    Container(
+                      width: 40, // 固定宽度，使其与上方标题长度相近
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        color: state.primaryColor != null
+                            ? ColorExtension.fromRgbList(
+                                state.primaryColor!,
+                              ).withValues(alpha: 0.7) // 降低不透明度等效减少感知饱和度
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: [
+                          if (state.primaryColor != null)
+                            BoxShadow(
+                              color: ColorExtension.fromRgbList(
+                                state.primaryColor!,
+                              ).withValues(alpha: 0.3),
+                              blurRadius: 6,
+                              spreadRadius: 0,
+                            ),
+                        ],
                       ),
                     ),
-                  ),
-                  isDark,
+                  ],
                 ),
-                _buildActionTile(
-                  l10n.palette,
-                  palLabel,
-                  Icons.palette_rounded,
-                  Colors.orangeAccent,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PalettesListScreen(
-                        segmentId: state.mainSegment?.id ?? state.mainSeg,
-                      ),
-                    ),
-                  ),
-                  isDark,
+              ),
+              _buildActionTile(
+                l10n.nightlight,
+                state.nl.on ? l10n.timerActive : l10n.timerInactive,
+                Icons.timer_rounded,
+                state.nl.on ? Colors.greenAccent : Colors.grey,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NightlightScreen()),
                 ),
-                _buildActionTile(
-                  l10n.presets,
-                  state.ps > 0
-                      ? (presetsAsync.valueOrNull?.firstWhere(
-                              (p) {
-                                if (p.id == state.ps) {
-                                  return true;
-                                }
-                                return false;
-                              },
-                              orElse: () => WledPreset(
-                                id: state.ps,
-                                name: 'Preset ${state.ps}',
-                              ),
-                            ).name ??
-                            'Preset ${state.ps}')
-                      : l10n.notSelected,
-                  Icons.bookmark_rounded,
-                  Colors.tealAccent,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PresetsListScreen(),
-                    ),
-                  ),
-                  isDark,
-                ),
-                _buildActionTile(
-                  l10n.segments,
-                  '${state.seg.length} ${l10n.segment}',
-                  Icons.view_column_rounded,
-                  Colors.indigoAccent,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SegmentsListScreen(),
-                    ),
-                  ),
-                  isDark,
-                ),
-                _buildActionTile(
-                  l10n.color,
-                  null,
-                  Icons.color_lens_rounded,
-                  FluxTheme.primary,
-                  () => _showColorPicker(
-                    context,
-                    state.primaryColor != null
-                        ? ColorExtension.fromRgbList(state.primaryColor!)
-                        : Colors.white,
-                    api,
-                    state.mainSegment?.id ?? state.mainSeg,
-                  ),
-                  isDark,
-                  subWidget: Row(
-                    children: [
-                      Container(
-                        width: 40, // 固定宽度，使其与上方标题长度相近
-                        height: 5,
-                        margin: const EdgeInsets.only(top: 4),
-                        decoration: BoxDecoration(
-                          color: state.primaryColor != null
-                              ? ColorExtension.fromRgbList(
-                                  state.primaryColor!,
-                                ).withValues(alpha: 0.7) // 降低不透明度等效减少感知饱和度
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4),
-                          boxShadow: [
-                            if (state.primaryColor != null)
-                              BoxShadow(
-                                color: ColorExtension.fromRgbList(
-                                  state.primaryColor!,
-                                ).withValues(alpha: 0.3),
-                                blurRadius: 6,
-                                spreadRadius: 0,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _buildActionTile(
-                  l10n.nightlight,
-                  state.nl.on ? l10n.timerActive : l10n.timerInactive,
-                  Icons.timer_rounded,
-                  state.nl.on ? Colors.greenAccent : Colors.grey,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const NightlightScreen()),
-                  ),
-                  isDark,
-                ),
-              ]
-              .animate(interval: 50.ms)
-              .fadeIn()
-              .scale(begin: const Offset(0.95, 0.95)),
+                isDark,
+              ),
+            ]
+            .animate(interval: 50.ms)
+            .fadeIn()
+            .scale(begin: const Offset(0.95, 0.95)),
+      ),
     );
   }
 
