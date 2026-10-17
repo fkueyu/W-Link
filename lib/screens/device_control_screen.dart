@@ -35,9 +35,19 @@ const double _kEmbeddedTopGap = 20;
 /// 过宽会让控制项离拇指太远。
 const double _kContentMaxWidth = 680;
 
-/// 快速操作瓦片的固定高度。用固定高度而不是宽高比：宽高比会让瓦片高度
+/// 快速操作瓦片的基础高度。用固定高度而不是宽高比：宽高比会让瓦片高度
 /// 随可用宽度漂移，窄屏被压扁、宽屏被拉高。
-const double _kActionTileHeight = 84;
+///
+/// 取 92 而不是 84：「定时关闭与渐暗」在 2 列布局下会折成两行，按 PingFang
+/// 真实行高实测内容约 88.6pt，84 会溢出 4.6pt。**测试字体是等宽方块、行高比
+/// 中文小**，所以 84 在用例里全绿、在真机上溢出——这个数只能由真机截图定。
+const double _kActionTileMinHeight = 92;
+
+/// 瓦片高度随字号缩放：辅助功能大字号下两行标题会更高，固定值必然溢出。
+double _actionTileExtent(BuildContext context) {
+  final scaler = MediaQuery.textScalerOf(context);
+  return scaler.scale(_kActionTileMinHeight).clamp(_kActionTileMinHeight, 168);
+}
 
 /// 顶部玻璃导航条的完整高度（含系统保留区域）。
 double _topBarHeight(BuildContext context) =>
@@ -784,11 +794,11 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     }
 
     return SliverGrid(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        mainAxisExtent: _kActionTileHeight,
+        mainAxisExtent: _actionTileExtent(context),
       ),
       delegate: SliverChildListDelegate(
         [
@@ -955,6 +965,9 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                       fontSize: 15,
                       letterSpacing: -0.5,
                     ),
+                    // 硬上限：中文标题折两行是常态，第三行必须截断而不是溢出。
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (subWidget != null)
                     subWidget

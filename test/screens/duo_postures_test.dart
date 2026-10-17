@@ -62,6 +62,7 @@ void main() {
     double top = 0,
     double bottom = 0,
     double keyboard = 0,
+    double textScale = 1.0,
   }) {
     return MaterialApp(
       home: MediaQuery(
@@ -69,6 +70,7 @@ void main() {
           size: size,
           padding: EdgeInsets.only(top: top, bottom: bottom),
           viewInsets: EdgeInsets.only(bottom: keyboard),
+          textScaler: TextScaler.linear(textScale),
           disableAnimations: true,
         ),
         child: child,
@@ -80,6 +82,7 @@ void main() {
     Size size, {
     bool embedded = false,
     double top = 0,
+    double textScale = 1.0,
     required Override preferences,
   }) {
     return ProviderScope(
@@ -100,6 +103,7 @@ void main() {
         DeviceControlScreen(device: kTestDevice, embedded: embedded),
         size,
         top: top,
+        textScale: textScale,
       ),
     );
   }
@@ -237,7 +241,12 @@ void main() {
       await drainTimers(tester);
     });
 
-    testWidgets('快速操作瓦片用固定高度，不再随可用宽度漂移', (tester) async {
+    /// 高度必须留够「两行中文标题」的余量。
+    ///
+    /// 真机上「定时关闭与渐暗」在 2 列布局里折成两行，按 PingFang 行高内容约
+    /// 88.6pt；此前的 84 在真机溢出 4.6pt，而用例全绿——因为测试字体是等宽方块、
+    /// 行高比中文小。所以这条用例守的是「余量 ≥ 92 且随字号增长」，不是形状。
+    testWidgets('快速操作瓦片高度留够两行中文标题的余量', (tester) async {
       const size = Size(393, 600);
       usePosture(tester, size);
       await tester.pumpWidget(
@@ -248,9 +257,50 @@ void main() {
       final grid = tester.widget<SliverGrid>(find.byType(SliverGrid));
       final delegate =
           grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
-      expect(delegate.mainAxisExtent, isNotNull);
-      expect(delegate.mainAxisExtent! > 0, isTrue);
       expect(delegate.crossAxisCount, 2);
+      expect(
+        delegate.mainAxisExtent,
+        greaterThanOrEqualTo(92),
+        reason: '两行中文标题 + 副标题实测约 88.6pt，留 3pt 余量',
+      );
+      await drainTimers(tester);
+    });
+
+    testWidgets('瓦片高度随字号缩放，不在大字号下溢出', (tester) async {
+      const size = Size(393, 600);
+      usePosture(tester, size);
+      await tester.pumpWidget(
+        controlHost(
+          size,
+          textScale: 1.6,
+          preferences: await preferencesOverride(),
+        ),
+      );
+      await tester.pump();
+
+      final grid = tester.widget<SliverGrid>(find.byType(SliverGrid));
+      final delegate =
+          grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(
+        delegate.mainAxisExtent,
+        greaterThan(92 * 1.5),
+        reason: '字号放大 1.6 倍时固定 92 必然溢出',
+      );
+      expect(tester.takeException(), isNull);
+      await drainTimers(tester);
+    });
+
+    testWidgets('瓦片标题最多两行且超长省略（不再靠内容撑高）', (tester) async {
+      const size = Size(393, 600);
+      usePosture(tester, size);
+      await tester.pumpWidget(
+        controlHost(size, preferences: await preferencesOverride()),
+      );
+      await tester.pump();
+
+      final title = tester.widget<Text>(find.text(ZhStrings().nightlight));
+      expect(title.maxLines, 2);
+      expect(title.overflow, TextOverflow.ellipsis);
       await drainTimers(tester);
     });
 

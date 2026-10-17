@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/core.dart';
 import '../providers/providers.dart';
 import 'app_toast.dart';
+import 'glass_sheet.dart';
 
 /// 颜色选择底部弹窗 (Custom HS Disc Version)
 class ColorPickerSheet extends ConsumerStatefulWidget {
@@ -48,15 +49,7 @@ class _ColorPickerSheetState extends ConsumerState<ColorPickerSheet> {
     final presetColors = ref.watch(quickColorPaletteProvider);
     final l10n = ref.watch(l10nProvider);
 
-    return Container(
-      decoration:
-          FluxTheme.glassDecoration(
-            context,
-            radius: 24,
-            color: Theme.of(context).cardTheme.color,
-          ).copyWith(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+    return GlassSheet(
       child: LayoutBuilder(
         builder: (context, constraints) {
           // 色盘之外固定占用的高度（手柄 40 + 间距 32 + 标题行 22 + 间距 12
