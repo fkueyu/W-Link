@@ -18,6 +18,11 @@ import 'package:flux/widgets/flux_dialog.dart';
 /// 这里刻意用**约束**驱动，而不是新增一套「Duo 专用布局」：Apple 的折叠屏
 /// 指引明确要求按尺寸类别与约束设计，禁止按具体屏幕/断点写死度量。
 const Map<String, Size> kDuoPostures = <String, Size>{
+  // 2026-10-24 在真 Duo 模拟器（iOS 27.1）上量到的外屏：窗口 466×678，
+  // 但 `MediaQuery.padding` 是 `EdgeInsets(0, 0, 84, 34)`——**右侧 84pt 是
+  // 竖排状态栏 + 摄像头保留区**。App 真正能用的内容区只有 382×644，
+  // 比下面那档 393×600 还窄 11pt。这一档就是按实测内容区补的。
+  '外屏-真实可用 382x644': Size(382, 644),
   '外屏-窄 393x600': Size(393, 600),
   '外屏-宽而矮 480x600': Size(480, 600),
   '内屏 951x669': Size(951, 669),
