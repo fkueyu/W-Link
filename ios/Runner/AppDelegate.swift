@@ -8,6 +8,7 @@ import UIKit
   private var resolvedDevices: [[String: Any]] = []
   private var discoveryChannel: FlutterMethodChannel?
   private var pendingResult: FlutterResult?
+  private var duoBridge: DuoGeometryBridge?
   
   override func application(
     _ application: UIApplication,
@@ -35,6 +36,11 @@ import UIKit
       }
     }
     
+    // 折叠屏几何（铰链 / 折叠线）—— Flutter 引擎在 iOS 上不提供，只能走 UIKit
+    if let duoRegistrar = self.registrar(forPlugin: "flux/duo") {
+      duoBridge = DuoGeometryBridge(messenger: duoRegistrar.messenger())
+    }
+
     // App Groups MethodChannel — 同步设备列表供 App Intents 使用
     if let appGroupsRegistrar = self.registrar(forPlugin: "flux/app_groups") {
       let appGroupsChannel = FlutterMethodChannel(

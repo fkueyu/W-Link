@@ -22,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flux/core/core.dart';
 import 'package:flux/models/models.dart';
 import 'package:flux/providers/providers.dart';
+import 'package:flux/services/duo_geometry_service.dart';
 import 'package:flux/main.dart';
 
 /// 假设备指向主机上的 WLED mock（模拟器与主机共用网络栈，127.0.0.1 即主机）。
@@ -144,7 +145,7 @@ class _ShotDriver {
         stdout.writeln('[shots] ${argv.skip(1).join(' ')}');
         break;
       case 'probe':
-        _dumpViewMetrics();
+        await _dumpViewMetrics();
         break;
       default:
         stdout.writeln('[shots] unknown cmd ${argv.first}');
@@ -231,16 +232,20 @@ class _ShotDriver {
   ///
   /// 全部取自 `PlatformDispatcher.views`（引擎直传，不经过任何我们自己的布局代码），
   /// 所以这里没有的，Flutter 侧就真的拿不到。
-  void _dumpViewMetrics() {
+  ///
+  /// 末尾追加原生桥（`flux/duo`）的快照——引擎拿不到、UIKit 拿得到的那部分。
+  Future<void> _dumpViewMetrics() async {
     final buf = StringBuffer();
     final views = ui.PlatformDispatcher.instance.views.toList();
     buf.writeln('views=${views.length}');
     for (var i = 0; i < views.length; i++) {
       final v = views[i];
       final logical = v.physicalSize / v.devicePixelRatio;
-      buf.writeln('view[$i] logical=${logical.width}x${logical.height} '
-          'physical=${v.physicalSize.width}x${v.physicalSize.height} '
-          'dpr=${v.devicePixelRatio}');
+      buf.writeln(
+        'view[$i] logical=${logical.width}x${logical.height} '
+        'physical=${v.physicalSize.width}x${v.physicalSize.height} '
+        'dpr=${v.devicePixelRatio}',
+      );
       buf.writeln('view[$i] padding=${v.padding}');
       buf.writeln('view[$i] viewPadding=${v.viewPadding}');
       buf.writeln('view[$i] viewInsets=${v.viewInsets}');
@@ -251,6 +256,28 @@ class _ShotDriver {
         buf.writeln('view[$i]   type=${f.type} bounds=${f.bounds}');
       }
     }
+
+    final duo = await DuoGeometryService().read();
+    buf.writeln('duo supported=${duo.supported} attached=${duo.attached}');
+    buf.writeln(
+      'duo view=${duo.viewSize.width}x${duo.viewSize.height} '
+      'scale=${duo.scale}',
+    );
+    buf.writeln('duo hinge=${duo.hinge}');
+    buf.writeln(
+      'duo verticalFoldX=${duo.verticalFoldX} '
+      'horizontalFoldY=${duo.horizontalFoldY} '
+      'needsSinglePane=${duo.needsSinglePane}',
+    );
+    buf.writeln(
+      'duo divisions=${duo.divisionRegions.length} '
+      '${duo.divisionRegions}',
+    );
+    buf.writeln(
+      'duo occlusions=${duo.occlusionRegions.length} '
+      '${duo.occlusionRegions}',
+    );
+
     try {
       File('${_documents().path}/probe.txt').writeAsStringSync(buf.toString());
     } catch (e) {

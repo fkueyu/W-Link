@@ -4,3 +4,4 @@ export 'wled_segment.dart';
 export 'wled_info.dart';
 export 'wled_preset.dart';
 export 'device_group.dart';
+export 'duo_geometry.dart';

@@ -20,6 +20,7 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		AA0001012F4B000000000001 /* WLEDService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001002F4B000000000001 /* WLEDService.swift */; };
 		AA0001032F4B000000000002 /* WLEDAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001022F4B000000000002 /* WLEDAppIntents.swift */; };
+		AA0001092F4B000000000006 /* DuoGeometryBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001082F4B000000000006 /* DuoGeometryBridge.swift */; };
 		AA0001052F4B000000000003 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = AA0001042F4B000000000003 /* Localizable.strings */; };
 /* End PBXBuildFile section */
 
@@ -69,6 +70,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA0001002F4B000000000001 /* WLEDService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WLEDService.swift; sourceTree = "<group>"; };
 		AA0001022F4B000000000002 /* WLEDAppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WLEDAppIntents.swift; sourceTree = "<group>"; };
+		AA0001082F4B000000000006 /* DuoGeometryBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoGeometryBridge.swift; sourceTree = "<group>"; };
 		AA0001062F4B000000000004 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AA0001072F4B000000000005 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -164,6 +166,7 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				AA0001002F4B000000000001 /* WLEDService.swift */,
 				AA0001022F4B000000000002 /* WLEDAppIntents.swift */,
+				AA0001082F4B000000000006 /* DuoGeometryBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -332,6 +335,7 @@
 				111287AB2F2B8AD6007F3DAF /* SceneDelegate.swift in Sources */,
 				AA0001012F4B000000000001 /* WLEDService.swift in Sources */,
 				AA0001032F4B000000000002 /* WLEDAppIntents.swift in Sources */,
+				AA0001092F4B000000000006 /* DuoGeometryBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
