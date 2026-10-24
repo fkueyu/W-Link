@@ -211,7 +211,7 @@ class ZhStrings implements AppStrings {
   @override
   String get notConnectedToLan => '未连接局域网';
   @override
-  String get addFirstDeviceHint => '点击下方按钮或右下角添加您的第一个 WLED 设备';
+  String get addFirstDeviceHint => '点按右上角的 ＋ 或下方按钮，添加您的第一台 WLED 设备';
   @override
   String get wifiRequiredHint => 'WLED 设备需要连接在同一 Wi-Fi 环境下才能使用';
   @override
@@ -585,7 +585,7 @@ class EnStrings implements AppStrings {
   String get notConnectedToLan => 'Not connected to LAN';
   @override
   String get addFirstDeviceHint =>
-      'Click the button below or the bottom right corner to add your first WLED device';
+      'Tap + at the top right, or the button below, to add your first WLED device';
   @override
   String get wifiRequiredHint =>
       'WLED devices must be connected to the same Wi-Fi network to be used.';

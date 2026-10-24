@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -173,9 +172,19 @@ class DeviceListScreen extends ConsumerWidget {
                               ),
                             ),
 
-                            // Action buttons
+                            // ── 头部动作条 ──
+                            //
+                            // 「添加设备」和「更多」收进同一行，而不是用一个
+                            // 底部浮动按钮：双栏模式（`_isEmbedded`）下整个
+                            // Scaffold 归外壳所有，浮动按钮会被置空 —— 那样
+                            // 宽屏上「添加设备」会**一个入口都不剩**。
+                            //
+                            // 另外这里原来是 `Icons.search_rounded` +
+                            // `l10n.search`，但它 `onTap` 去的是发现页（加
+                            // 设备）。读屏用户听到「搜索」却进了加设备页。
                             BouncyButton(
-                              semanticLabel: l10n.search,
+                              key: const ValueKey('device-list-add'),
+                              semanticLabel: l10n.addDevice,
                               onTap: () => _navigateToDiscovery(context),
                               child: Container(
                                 padding: const EdgeInsets.all(10),
@@ -188,7 +197,7 @@ class DeviceListScreen extends ConsumerWidget {
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
-                                  Icons.search_rounded,
+                                  Icons.add_rounded,
                                   size: 22,
                                   color: FluxTheme.primary,
                                 ),
@@ -430,71 +439,8 @@ class DeviceListScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _isEmbedded
-          ? null
-          : BouncyButton(
-                  onTap: () => _navigateToDiscovery(context),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(32),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(32),
-                          border: Border.all(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white.withValues(alpha: 0.1)
-                                : Colors.white.withValues(alpha: 0.8),
-                            width: 0.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.add_rounded,
-                              color: FluxTheme.primary,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              l10n.addDevice,
-                              style: const TextStyle(
-                                color: FluxTheme.primary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                .animate()
-                .fadeIn(delay: 600.ms)
-                .slideY(
-                  begin: 0.5,
-                  curve: Curves.easeOutBack,
-                  duration: 800.ms,
-                ),
+      // 底部不再放浮动按钮：加设备的入口在头部动作条里（见上），
+      // 空列表时还有 EmptyState 自己的主行动按钮。
     );
   }
 }

@@ -28,8 +28,13 @@ const double _kTopBarBaseHeight = 64;
 /// 玻璃条与首屏内容之间的留白。
 const double _kTopBarGap = 16;
 
-/// 双栏嵌入模式（没有玻璃条）时首屏内容的顶部留白。
-const double _kEmbeddedTopGap = 20;
+/// 双栏嵌入模式下详情列顶部动作条的高度。
+///
+/// 嵌入模式原本把整条玻璃导航条都跳过了（`if (!widget.embedded)`），连带
+/// 把「设备设置」的**唯一**入口也跳掉了 —— 宽屏上根本打不开设置面板。
+/// 这里补一条只放动作、不铺满宽度的条：动作贴右边缘，符合「详情列的动作
+/// 归详情列」的分栏惯例。
+const double _kEmbeddedToolbarHeight = 44;
 
 /// 主内容列的最大宽度：过窄会在平板/折叠内屏留下大片空白，
 /// 过宽会让控制项离拇指太远。
@@ -204,7 +209,66 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
                   ),
                 ),
               ),
+
+            // 嵌入模式：详情列自己的顶部动作条（贴右边缘，不铺满）
+            if (widget.embedded)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: SafeArea(
+                  bottom: false,
+                  left: false,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8, right: 16),
+                    child: _buildEmbeddedToolbar(
+                      context,
+                      stateAsync.valueOrNull,
+                      api,
+                      l10n,
+                    ),
+                  ),
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 双栏嵌入模式下详情列的动作条。
+  ///
+  /// 只放「设备设置」：其余动作（特效/预设/分段/定时/夜灯）都已经在正文的
+  /// 瓦片里，再挂一遍就是两条路做同一件事。这里的职责只是补回窄屏玻璃条
+  /// 在那个位置上本来就有、嵌入模式却丢掉的那个入口。
+  Widget _buildEmbeddedToolbar(
+    BuildContext context,
+    WledState? state,
+    WledApiService? api,
+    AppStrings l10n,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BouncyButton(
+      key: const ValueKey('device-settings-embedded'),
+      semanticLabel: l10n.settings,
+      onTap: () => _showSettingsSheet(context, state, api),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.white.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.8),
+            width: 0.5,
+          ),
+        ),
+        child: const Icon(
+          Icons.tune_rounded,
+          color: FluxTheme.primary,
+          size: 20,
         ),
       ),
     );
@@ -285,7 +349,8 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
             SliverToBoxAdapter(
               child: SizedBox(
                 height: widget.embedded
-                    ? _kEmbeddedTopGap
+                    // 嵌入模式：动作条 44 + 顶部 8 内边距 + 一条 12 的呼吸
+                    ? _kEmbeddedToolbarHeight + 8 + 12
                     : _topBarHeight(context) + _kTopBarGap,
               ),
             ), // Space for glass bar
