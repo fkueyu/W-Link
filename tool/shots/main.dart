@@ -12,6 +12,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -142,6 +143,9 @@ class _ShotDriver {
       case 'log':
         stdout.writeln('[shots] ${argv.skip(1).join(' ')}');
         break;
+      case 'probe':
+        _dumpViewMetrics();
+        break;
       default:
         stdout.writeln('[shots] unknown cmd ${argv.first}');
     }
@@ -221,6 +225,38 @@ class _ShotDriver {
       ),
     );
     await Future<void>.delayed(const Duration(milliseconds: 150));
+  }
+
+  /// 把引擎层视图指标落盘，用来回答「Flutter 到底能拿到 Duo 的哪些信息」。
+  ///
+  /// 全部取自 `PlatformDispatcher.views`（引擎直传，不经过任何我们自己的布局代码），
+  /// 所以这里没有的，Flutter 侧就真的拿不到。
+  void _dumpViewMetrics() {
+    final buf = StringBuffer();
+    final views = ui.PlatformDispatcher.instance.views.toList();
+    buf.writeln('views=${views.length}');
+    for (var i = 0; i < views.length; i++) {
+      final v = views[i];
+      final logical = v.physicalSize / v.devicePixelRatio;
+      buf.writeln('view[$i] logical=${logical.width}x${logical.height} '
+          'physical=${v.physicalSize.width}x${v.physicalSize.height} '
+          'dpr=${v.devicePixelRatio}');
+      buf.writeln('view[$i] padding=${v.padding}');
+      buf.writeln('view[$i] viewPadding=${v.viewPadding}');
+      buf.writeln('view[$i] viewInsets=${v.viewInsets}');
+      buf.writeln('view[$i] systemGestureInsets=${v.systemGestureInsets}');
+      final features = v.displayFeatures;
+      buf.writeln('view[$i] displayFeatures=${features.length}');
+      for (final f in features) {
+        buf.writeln('view[$i]   type=${f.type} bounds=${f.bounds}');
+      }
+    }
+    try {
+      File('${_documents().path}/probe.txt').writeAsStringSync(buf.toString());
+    } catch (e) {
+      stdout.writeln('[probe] write failed: $e');
+    }
+    stdout.writeln('[probe] written');
   }
 
   void _writeAck(String message) {
