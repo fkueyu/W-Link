@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.7] - 2026-10-24（构建 14）
+
+### Added / 新增
+
+- **折叠屏几何桥（`flux/duo`）**：Flutter 引擎在 iOS 上不提供折叠信息（`ViewConfiguration.displayFeatures` 官方文档写明只填充 Android），因此新增一个原生桥，从 UIKit 取两样引擎拿不到的东西——`UIHingeInteraction`（铰链状态与角度）与 `UIView.reservedRegions(of:)`（折叠分区、摄像头遮挡区），经 MethodChannel 送到 Dart。Dart 侧是 `DuoGeometryService` 与 `duoGeometryProvider`。
+- **双栏在竖折时对齐折痕**：`AdaptiveShell` 拿到竖折分区后，左栏宽度取折痕坐标、右栏从折痕起，并且不再额外画一条分隔线——分隔线就是物理折痕。折痕位置落在 `[300, 0.55×宽]` 之外时退回固定 340（不硬套）。
+- **半折/横折退回单栏**：铰链处于 `partiallyOpen` 或出现水平折痕时，横向双栏会把内容拦腰切断，此时走单栏布局。
+- 新增 21 条判据：13 条载荷解析/退化路径、8 条布局（含「拿不到折叠信息时与改动前逐像素一致」这条回归守卫）。
+
+### Notes / 说明
+
+- **低于 iOS 27.1 时行为完全不变**：原生侧返回 `supported=false`，Dart 侧按「没有折叠信息」处理，所有 getter 为 null。iPhone 17（iOS 27.0）实测走的就是这条路径。
+- **半折姿态未能取证**：`simctl` 没有折叠命令，DeviceHub 的设备窗口在当前环境里开不出来，所以折叠分区在真机上始终为空数组。竖折对齐与半折单栏只有用例断言，没有像素证据。详见[验证记录](docs/验证/2026-10-24-折叠几何桥/验证记录.md)。
+
 ## [2.4.6] - 2026-10-24（构建 13）
 
 ### Changed / 变更

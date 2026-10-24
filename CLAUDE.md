@@ -54,6 +54,7 @@ CI（`.github/workflows/flutter_ci.yml`）只跑 `flutter pub get`、`flutter an
 ### 自适应布局壳
 
 `lib/screens/adaptive_shell.dart` 是布局根：以 `800px` 为阈值，宽屏（iPad 横屏 / macOS）走「左侧设备列表 + 右侧控制页」双栏；窄屏（iPhone）回退到 push 导航。新增主页面时考虑两种布局形态。
+折叠屏上多两条规则：**有竖折分区时左栏宽度对齐折痕**（折痕即分隔线）、**半折/横折退回单栏**。都依赖 `duoGeometryProvider`；拿不到几何时与普通 iPhone 完全一致。结构定位键是 `kSplitRowKey` / `kDeviceListPaneKey` / `kDetailPaneKey` / `kSplitDividerKey`。
 
 ### 分层目录
 
@@ -81,8 +82,14 @@ CI（`.github/workflows/flutter_ci.yml`）只跑 `flutter pub get`、`flutter an
 - iOS 工程内有手写的 Swift 代码（不属于 Flutter 生成产物，请勿删）：
   - `ios/Runner/WLEDAppIntents.swift` — App Intents / Siri 快捷指令定义。
   - `ios/Runner/WLEDService.swift` — Intent 内调用的 WLED HTTP 客户端。
+  - `ios/Runner/DuoGeometryBridge.swift` — 折叠屏几何桥（铰链状态/角度、折叠分区、遮挡区）。
   - `ios/Runner/Runner.entitlements` — 启用 App Groups。
-- Dart → Native 通道是 `flux/app_groups`，仅一个 `syncDevices` 方法。新增 method 时两端都要改。
+- Dart → Native 通道（三个，新增 method 时两端都要改）：
+  - `flux/app_groups` — `syncDevices`，把设备列表写进 App Group 供 App Intents 读取。
+  - `flux/mdns_discovery` — mDNS 发现，原生侧反向推 `onDeviceFound`。
+  - `flux/duo` — 折叠屏几何。`getGeometry` 拉快照，原生侧在铰链变化时反向推 `onHinge`。**Flutter 引擎在 iOS 上不提供折叠信息**（`displayFeatures` 只填 Android），只能走 UIKit，且相关 API 均为 iOS 27.1 起可用——低于该版本时原生侧返回 `supported: false`，Dart 侧（`DuoGeometryService` / `duoGeometryProvider`）按「没有折叠信息」处理，布局与普通 iPhone 一致。
+- **改 `ios/Runner.xcodeproj/project.pbxproj` 前先查 ID 占用**：本工程用 `AA00010N…NNNN` 递增，容易被猜重复（`AA000104…0003` / `AA000105…0003` 属于 `Localizable.strings`）。撞车时的报错是 `Unexpected duplicate tasks` + 重复的 `Localizable.strings` 拷贝任务，**完全不指向真因**。改完用「对象定义数 == 唯一 ID 数」校验。
+- **iOS 27.1+ 的 API 必须在函数声明上写 `@available(iOS 27.1, *)`**，只在调用处 `guard #available` 不够——参数类型本身就是新版独有类型时会报「only available in iOS 27.1」。
 
 ## Versioning
 
