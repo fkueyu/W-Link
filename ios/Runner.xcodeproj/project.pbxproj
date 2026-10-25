@@ -22,6 +22,7 @@
 		AA0001032F4B000000000002 /* WLEDAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001022F4B000000000002 /* WLEDAppIntents.swift */; };
 		AA0001092F4B000000000006 /* DuoGeometryBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001082F4B000000000006 /* DuoGeometryBridge.swift */; };
 		AA0001052F4B000000000003 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = AA0001042F4B000000000003 /* Localizable.strings */; };
+		AA00010B2F4B00000000000B /* DuoToolbarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00010A2F4B00000000000A /* DuoToolbarBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +74,7 @@
 		AA0001082F4B000000000006 /* DuoGeometryBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoGeometryBridge.swift; sourceTree = "<group>"; };
 		AA0001062F4B000000000004 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AA0001072F4B000000000005 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		AA00010A2F4B00000000000A /* DuoToolbarBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoToolbarBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -167,6 +169,7 @@
 				AA0001002F4B000000000001 /* WLEDService.swift */,
 				AA0001022F4B000000000002 /* WLEDAppIntents.swift */,
 				AA0001082F4B000000000006 /* DuoGeometryBridge.swift */,
+				AA00010A2F4B00000000000A /* DuoToolbarBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -336,6 +339,7 @@
 				AA0001012F4B000000000001 /* WLEDService.swift in Sources */,
 				AA0001032F4B000000000002 /* WLEDAppIntents.swift in Sources */,
 				AA0001092F4B000000000006 /* DuoGeometryBridge.swift in Sources */,
+				AA00010B2F4B00000000000B /* DuoToolbarBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

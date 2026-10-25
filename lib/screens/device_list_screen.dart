@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/core.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
+import '../services/services.dart';
 import '../widgets/widgets.dart';
 import 'device_control_screen.dart';
 import 'device_discovery_screen.dart';
@@ -45,6 +46,21 @@ class DeviceListScreen extends ConsumerWidget {
     }
   }
 
+  /// 「更多」菜单的动作。自绘弹窗与系统菜单共用同一份，避免两处走岔。
+  void _openMenuAction(BuildContext context, String value) {
+    if (value == 'groups') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const GroupsManagementScreen()),
+      );
+    } else if (value == 'settings') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      );
+    }
+  }
+
   void _navigateToDiscovery(BuildContext context) {
     Navigator.push(
       context,
@@ -69,6 +85,13 @@ class DeviceListScreen extends ConsumerWidget {
     final isWifiConnected = ref.watch(isWifiConnectedProvider);
     final onlineDevices = devices.where((device) => device.isOnline).length;
 
+    // B 方案探针：折叠屏上把两个头部动作交给**系统**工具栏。
+    // 非折叠设备（`supported` 为 false）一律走原来的自绘行，观感不变。
+    final duoGeometry = ref.watch(duoGeometryProvider).valueOrNull;
+    final useSystemToolbar = duoGeometry?.supported ?? false;
+    // 被推入新路由时收回系统栏，回到本页再显示。
+    final routeIsCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+
     return Scaffold(
       backgroundColor: _isEmbedded ? Colors.transparent : null,
       body: _DeviceListBackground(
@@ -89,6 +112,27 @@ class DeviceListScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (useSystemToolbar)
+                          DuoSystemToolbar(
+                            visible: routeIsCurrent,
+                            addLabel: l10n.addDevice,
+                            moreLabel: l10n.moreActions,
+                            menu: [
+                              DuoToolbarMenuEntry(
+                                id: 'groups',
+                                title: l10n.deviceGroups,
+                                symbol: 'square.3.layers.3d',
+                              ),
+                              DuoToolbarMenuEntry(
+                                id: 'settings',
+                                title: l10n.settings,
+                                symbol: 'gearshape',
+                              ),
+                            ],
+                            onAdd: () => _navigateToDiscovery(context),
+                            onMenuSelected: (id) =>
+                                _openMenuAction(context, id),
+                          ),
                         Row(
                           children: [
                             Expanded(
@@ -174,6 +218,10 @@ class DeviceListScreen extends ConsumerWidget {
 
                             // ── 头部动作条 ──
                             //
+                            // 折叠屏上整行交给系统工具栏（见上方 DuoSystemToolbar），
+                            // 这里只在非折叠设备渲染。
+                            if (!useSystemToolbar) ...[
+                            //
                             // 「添加设备」和「更多」收进同一行，而不是用一个
                             // 底部浮动按钮：双栏模式（`_isEmbedded`）下整个
                             // Scaffold 归外壳所有，浮动按钮会被置空 —— 那样
@@ -231,24 +279,8 @@ class DeviceListScreen extends ConsumerWidget {
                                       Brightness.dark
                                   ? FluxTheme.cardDark
                                   : Colors.white.withValues(alpha: 0.98),
-                              onSelected: (value) {
-                                if (value == 'groups') {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const GroupsManagementScreen(),
-                                    ),
-                                  );
-                                } else if (value == 'settings') {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const SettingsScreen(),
-                                    ),
-                                  );
-                                }
-                              },
+                              onSelected: (value) =>
+                                  _openMenuAction(context, value),
                               itemBuilder: (context) => [
                                 PopupMenuItem(
                                   value: 'groups',
@@ -314,6 +346,7 @@ class DeviceListScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
+                            ],
                           ],
                         ),
                       ],

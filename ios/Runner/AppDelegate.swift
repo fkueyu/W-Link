@@ -9,6 +9,7 @@ import UIKit
   private var discoveryChannel: FlutterMethodChannel?
   private var pendingResult: FlutterResult?
   private var duoBridge: DuoGeometryBridge?
+  var duoToolbarBridge: DuoToolbarBridge?
   
   override func application(
     _ application: UIApplication,
@@ -39,6 +40,12 @@ import UIKit
     // 折叠屏几何（铰链 / 折叠线）—— Flutter 引擎在 iOS 上不提供，只能走 UIKit
     if let duoRegistrar = self.registrar(forPlugin: "flux/duo") {
       duoBridge = DuoGeometryBridge(messenger: duoRegistrar.messenger())
+    }
+
+    // B 方案探针：把 Flutter 装进 UINavigationController，让头部动作变成真正的
+    // UIBarButtonItem，从而吃到 Duo 上系统条的竖排摆位。默认隐藏系统栏。
+    if let toolbarRegistrar = self.registrar(forPlugin: "flux/duo_toolbar") {
+      duoToolbarBridge = DuoToolbarBridge(messenger: toolbarRegistrar.messenger())
     }
 
     // App Groups MethodChannel — 同步设备列表供 App Intents 使用

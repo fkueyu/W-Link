@@ -17,6 +17,7 @@ abstract class AppStrings {
   String get settings;
   String get webControl;
   String get deviceGroups;
+  String get moreActions;
   String get scanning;
   String get foundDevices;
   String get power;
@@ -230,6 +231,8 @@ class ZhStrings implements AppStrings {
   String get webControl => '网页控制';
   @override
   String get deviceGroups => '设备分组';
+  @override
+  String get moreActions => '更多';
   @override
   String get scanning => '正在扫描...';
   @override
@@ -605,6 +608,8 @@ class EnStrings implements AppStrings {
   String get webControl => 'Web Control';
   @override
   String get deviceGroups => 'Groups';
+  @override
+  String get moreActions => 'More';
   @override
   String get scanning => 'Scanning...';
   @override
