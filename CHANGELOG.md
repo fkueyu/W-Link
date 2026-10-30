@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - 兼容部分 WLED 固件返回布尔型白光能力字段，避免设备信息解析失败。
 - 修复预设、分段、定时渐暗及编辑弹层中的退出、输入和小尺寸布局问题。
 - 补齐设备扫描失败提示的英文翻译。
+- 修复新版 Flutter 下列表点击反馈被卡片背景遮挡的问题。
 
 ### Optimized / 优化
 
@@ -30,9 +31,10 @@ All notable changes to this project will be documented in this file.
 
 - iOS / iPadOS：3.0.0 发布准备，重点完善 Duo 适配与通用交互。
 - Android：包含通用发现、连接、固件兼容、界面和版本显示修复，发布3.0.0签名AAB/APK。
-- macOS：固定兼容构建环境，保留原有部署目标与包标识，新增包含 Apple Silicon / Intel 的通用 ZIP；尚未配置 Developer ID 公证。
+- macOS：保留原有包标识，新增包含 Apple Silicon / Intel 的通用 ZIP；随 Flutter SDK 升级，最低支持 macOS 12.0，尚未配置 Developer ID 公证。
 - Windows：新增包含完整运行文件的 x64 ZIP，统一 W-Link 窗口和可执行文件名称，保留已有存储身份。
 - Linux：保留源码兼容；本次不新增安装包。
+- 构建环境统一为 Flutter 3.47.9 / Dart 3.13.7，iOS / macOS 保持纯 SwiftPM。
 
 ## [2.4.7] - 2026-10-24（构建 14）
 
