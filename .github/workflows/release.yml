@@ -57,7 +57,7 @@ jobs:
           if any(not os.environ.get(name) for name in names):
               raise SystemExit('Android release signing secrets are required.')
           Path('android/app/upload-keystore.jks').write_bytes(
-              base64.b64decode(os.environ['ANDROID_KEYSTORE_BASE64'], validate=True))
+              base64.b64decode(''.join(os.environ['ANDROID_KEYSTORE_BASE64'].split()), validate=True))
           def escaped(value):
               return value.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
           values = {
@@ -168,6 +168,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Match the project's Swift Package Manager configuration
+        run: flutter config --enable-swift-package-manager
       - run: flutter pub get --enforce-lockfile
       - run: flutter build ipa --release --no-codesign --no-pub
       - name: Verify universal device support and version

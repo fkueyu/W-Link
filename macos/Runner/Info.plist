@@ -28,6 +28,12 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>W-Link 需要访问局域网，以发现和控制您的 WLED 设备。</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_wled._tcp</string>
+	</array>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

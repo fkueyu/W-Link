@@ -37,5 +37,29 @@ class BundleVerificationTest(unittest.TestCase):
     def test_iphone_only_archive_is_rejected(self):
         self.assertNotEqual(self.verify(families=(1,)).returncode, 0)
 
+    def verify_mac(self, permissions):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "pubspec.yaml").write_text("version: 3.0.0+15\n")
+            app = root / "W-Link.app"
+            (app / "Contents").mkdir(parents=True)
+            info = {"CFBundleShortVersionString": "3.0.0", "CFBundleVersion": "15"}
+            info.update(permissions)
+            (app / "Contents/Info.plist").write_bytes(plistlib.dumps(info))
+            return subprocess.run(
+                [sys.executable, str(SCRIPT), str(app)],
+                cwd=root, text=True, capture_output=True,
+            )
+
+    def test_mac_missing_privacy_declarations_is_rejected(self):
+        self.assertNotEqual(self.verify_mac({}).returncode, 0)
+
+    def test_mac_declared_wled_access_is_accepted(self):
+        result = self.verify_mac({
+            "NSLocalNetworkUsageDescription": "Discover and control WLED lights.",
+            "NSBonjourServices": ["_wled._tcp"],
+        })
+        self.assertEqual(result.returncode, 0, result.stderr)
+
 if __name__ == "__main__":
     unittest.main()
