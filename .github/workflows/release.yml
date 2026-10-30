@@ -4,6 +4,11 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      ios_only:
+        description: 'Only diagnose the iPhone/iPad archive; never publish'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,6 +19,7 @@ env:
 jobs:
   checks:
     name: Analyze & Test
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +35,7 @@ jobs:
 
   android:
     name: Android AAB & APK
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,6 +93,7 @@ jobs:
 
   macos:
     name: macOS Universal
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     runs-on: macos-15
     env:
       # Xcode 26 preserves the existing macOS deployment floor.
@@ -116,6 +124,7 @@ jobs:
 
   windows:
     name: Windows x64
+    if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -171,7 +180,13 @@ jobs:
       - name: Match the project's Swift Package Manager configuration
         run: flutter config --enable-swift-package-manager
       - run: flutter pub get --enforce-lockfile
-      - run: flutter build ipa --release --no-codesign --no-pub
+      - run: flutter build ipa --release --no-codesign --no-pub --verbose 2>&1 | tee ios-build.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ios-failure-log
+          path: ios-build.log
+          retention-days: 3
       - name: Verify universal device support and version
         run: python3 tool/release/verify_apple_bundle.py build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app --ios
       - name: Package unsigned archive for signing
