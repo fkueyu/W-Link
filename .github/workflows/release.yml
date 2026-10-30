@@ -180,7 +180,10 @@ jobs:
       - name: Match the project's Swift Package Manager configuration
         run: flutter config --enable-swift-package-manager
       - run: flutter pub get --enforce-lockfile
-      - run: flutter build ipa --release --no-codesign --no-pub --verbose 2>&1 | tee ios-build.log
+      - name: Prepare Flutter framework before SwiftPM scans
+        run: python3 tool/release/prepare_ios_archive.py
+      - shell: bash
+        run: flutter build ipa --release --no-codesign --no-pub --verbose 2>&1 | tee ios-build.log
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
