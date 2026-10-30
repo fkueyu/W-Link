@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - iPhone Duo 系统工具栏覆盖设备控制、发现、分组、设置及各二级页面；在具备原生能力时统一承载返回与操作，能力不可用时保留普通界面入口。
 - 颜色选择支持 HEX 输入、键盘操作与快捷色持久化；大字号和窄屏下允许滚动操作。
 - 设置页从当前安装包读取实际版本号，支持 iOS、Android 与 macOS。
+- 增加 Windows 实际版本读取，并补齐 macOS 通用版、Windows x64 与 iPhone/iPad 归档的标签自动构建；全部验证成功后统一发布 Android 和桌面下载包。
 
 ### Fixed / 修复
 
@@ -29,8 +30,9 @@ All notable changes to this project will be documented in this file.
 
 - iOS / iPadOS：3.0.0 发布准备，重点完善 Duo 适配与通用交互。
 - Android：包含通用发现、连接、固件兼容、界面和版本显示修复，发布3.0.0签名AAB/APK。
-- macOS：共享修复适用；原生构建受当前工具链多架构验证和旧部署目标配置阻塞，默认包标识未调整，本轮不发布独立安装包。
-- Windows / Linux：保留源码兼容；本次不新增官方安装包或发布渠道。
+- macOS：固定兼容构建环境，保留原有部署目标与包标识，新增包含 Apple Silicon / Intel 的通用 ZIP；尚未配置 Developer ID 公证。
+- Windows：新增包含完整运行文件的 x64 ZIP，统一 W-Link 窗口和可执行文件名称，保留已有存储身份。
+- Linux：保留源码兼容；本次不新增安装包。
 
 ## [2.4.7] - 2026-10-24（构建 14）
 

@@ -5,8 +5,9 @@
 W-Link is a modern, minimalist [WLED](https://kno.wled.ge/) device control app built with Flutter. It aims to provide a smooth, intuitive user experience, making [WLED](https://kno.wled.ge/) LED strip management simple and elegant. *(Note: This project was developed with AI assistance, for learning and reference purposes)*
 
 🌐 **Website**: [https://ainx.ink/](https://ainx.ink/)
-🍎 **iOS / iPadOS / macOS**: Available on the App Store. Visit the website for the link.
+🍎 **iOS / iPadOS**: Available on the App Store. Visit the website for the link.
 🤖 **Android**: Download the APK from GitHub Releases or visit the website.
+💻 **macOS / Windows**: Download the Universal Mac ZIP or Windows x64 ZIP from [GitHub Releases](https://github.com/fkueyu/W-Link/releases/latest). Extract the full Windows directory before running W-Link.exe. The Mac build is currently not notarized.
 
 ## ✨ Features
 
