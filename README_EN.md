@@ -22,7 +22,7 @@ W-Link is a modern, minimalist [WLED](https://kno.wled.ge/) device control app b
 
 ## 🛠 Tech Stack
 
-* **Framework**: Flutter (Dart SDK ≥ 3.10.4)
+* **Framework**: Flutter 3.47.9 (Dart 3.13.7), with Swift Package Manager for iOS / macOS
 * **State Management**: [Riverpod 2.6](https://riverpod.dev/) (annotation-driven + hand-written StateNotifier mix)
 * **Networking**: `http` (Keep-Alive / 5s timeout) + `web_socket_channel` (live push)
 * **Discovery**: `multicast_dns` (mDNS) + `connectivity_plus` (network state)
@@ -46,7 +46,8 @@ W-Link is a modern, minimalist [WLED](https://kno.wled.ge/) device control app b
 
 ### Prerequisites
 
-* Flutter SDK ≥ 3.10.4 (Dart SDK ≥ 3.10)
+* Flutter SDK 3.47.9 stable (includes Dart 3.13.7; matches CI)
+* The macOS app requires macOS 12.0 or later (required by the updated Flutter SDK)
 * Xcode 16+ (for iOS / macOS builds)
 * Android Studio / Android SDK (for Android builds)
 

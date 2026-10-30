@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  FLUTTER_VERSION: '3.41.9'
+  FLUTTER_VERSION: '3.47.9'
 
 jobs:
   checks:
@@ -96,7 +96,7 @@ jobs:
     if: github.event_name != 'workflow_dispatch' || !inputs.ios_only
     runs-on: macos-15
     env:
-      # Xcode 26 preserves the existing macOS deployment floor.
+      # Keep the desktop runner/toolchain pinned for reproducible universal builds.
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
@@ -180,8 +180,6 @@ jobs:
       - name: Match the project's Swift Package Manager configuration
         run: flutter config --enable-swift-package-manager
       - run: flutter pub get --enforce-lockfile
-      - name: Prepare Flutter framework before SwiftPM scans
-        run: python3 tool/release/prepare_ios_archive.py
       - shell: bash
         run: flutter build ipa --release --no-codesign --no-pub --verbose 2>&1 | tee ios-build.log
       - uses: actions/upload-artifact@v4

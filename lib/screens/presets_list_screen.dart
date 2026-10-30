@@ -529,30 +529,31 @@ class _PresetsListScreenState extends ConsumerState<PresetsListScreen> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Material(
           color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
           borderRadius: BorderRadius.circular(24),
-        ),
-        child: ListTile(
-          leading: const Icon(
-            Icons.delete_forever_rounded,
-            color: Colors.redAccent,
-          ),
-          title: Text(
-            _message(zh, '删除预设', 'Delete preset'),
-            style: const TextStyle(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            leading: const Icon(
+              Icons.delete_forever_rounded,
               color: Colors.redAccent,
-              fontWeight: FontWeight.bold,
             ),
+            title: Text(
+              _message(zh, '删除预设', 'Delete preset'),
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(sheetContext);
+              if (_isTargetCurrent(api, deviceId)) {
+                _showDeleteConfirm(context, preset, api, deviceId, zh);
+              }
+            },
           ),
-          onTap: () {
-            Navigator.pop(sheetContext);
-            if (_isTargetCurrent(api, deviceId)) {
-              _showDeleteConfirm(context, preset, api, deviceId, zh);
-            }
-          },
         ),
       ),
     );

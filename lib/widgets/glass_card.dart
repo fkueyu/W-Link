@@ -43,7 +43,8 @@ class GlassCard extends StatelessWidget {
             color: backgroundColor,
             hasShadow: hasShadow,
           ),
-          child: child,
+          // Keep ink feedback above the glass decoration.
+          child: Material(type: MaterialType.transparency, child: child),
         ),
       ),
     );

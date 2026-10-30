@@ -22,7 +22,7 @@ W-Link（幻彩）是一个现代化、极简设计的 [WLED](https://kno.wled.g
 
 ## 🛠 技术栈 (Tech Stack)
 
-* **Framework**: Flutter (Dart SDK ≥ 3.10.4)
+* **Framework**: Flutter 3.47.9（Dart 3.13.7），iOS / macOS 使用 Swift Package Manager
 * **State Management**: [Riverpod 2.6](https://riverpod.dev/) （注解驱动 + 手写 StateNotifier 混合）
 * **Networking**: `http` (Keep-Alive / 5 秒超时) + `web_socket_channel` (实时推送)
 * **Discovery**: `multicast_dns` (mDNS 发现) + `connectivity_plus` (网络状态)
@@ -46,7 +46,8 @@ W-Link（幻彩）是一个现代化、极简设计的 [WLED](https://kno.wled.g
 
 ### 环境要求
 
-* Flutter SDK ≥ 3.10.4（Dart SDK ≥ 3.10）
+* Flutter SDK 3.47.9 stable（内含 Dart 3.13.7，与 CI 保持一致）
+* macOS 应用最低支持 macOS 12.0（新版 Flutter 要求）
 * Xcode 16+（仅 iOS / macOS 构建）
 * Android Studio / Android SDK（仅 Android 构建）
 
