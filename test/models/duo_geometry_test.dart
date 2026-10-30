@@ -41,6 +41,34 @@ Map<String, Object?> _region(
 };
 
 void main() {
+  group('真实折叠能力', () {
+    test('API 可用但没有铰链和分区不属于折叠设备', () {
+      expect(DuoGeometry.fromPlatform(_snapshot()).isFoldable, isFalse);
+    });
+    test('附着且存在铰链或非活动分区才属于折叠设备', () {
+      expect(
+        DuoGeometry.fromPlatform(
+          _snapshot(hinge: {'status': 'closed', 'angleRadians': 0}),
+        ).isFoldable,
+        isTrue,
+      );
+      expect(
+        DuoGeometry.fromPlatform(
+          _snapshot(divisions: [_region(455, 0, 40, 669, active: false)]),
+        ).isFoldable,
+        isTrue,
+      );
+      expect(
+        DuoGeometry.fromPlatform(
+          _snapshot(
+            attached: false,
+            hinge: {'status': 'closed', 'angleRadians': 0},
+          ),
+        ).isFoldable,
+        isFalse,
+      );
+    });
+  });
   group('DuoGeometry.fromPlatform', () {
     test('外屏实测快照：右侧 84pt 遮挡区解析成一条竖条，且不触发单栏', () {
       // 2026-10-24 在 Duo 模拟器上量到 padding = EdgeInsets(0, 0, 84, 34)。

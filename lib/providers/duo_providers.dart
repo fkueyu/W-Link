@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
@@ -22,4 +24,35 @@ final duoGeometryProvider = StreamProvider<DuoGeometry>((ref) {
 /// 系统工具栏服务（B 方案探针）。非 iOS 上所有调用都是 no-op。
 final duoToolbarServiceProvider = Provider<DuoToolbarService>((ref) {
   return DuoToolbarService();
+});
+
+/// 可见页面原生按钮下发或显示失败时，立即恢复 Flutter 入口。
+final duoToolbarFallbackProvider = StateProvider<bool>((ref) => false);
+
+/// 真实折叠设备且原生安装成功后，才允许撤下 Flutter 动作入口。
+final duoToolbarReadyProvider = FutureProvider<bool>((ref) {
+  if (ref.watch(duoGeometryProvider).valueOrNull?.isFoldable != true) {
+    return false;
+  }
+  var disposed = false;
+  Timer? retry;
+  ref.onDispose(() {
+    disposed = true;
+    retry?.cancel();
+  });
+  if (ref.watch(duoToolbarFallbackProvider)) {
+    retry = Timer(const Duration(milliseconds: 500), () {
+      ref.read(duoToolbarFallbackProvider.notifier).state = false;
+    });
+    // 同步返回 false，避免 AsyncLoading 继续携带上次的 true。
+    return false;
+  }
+  final service = ref.watch(duoToolbarServiceProvider);
+  return service.ensureAttached().then((ready) {
+    if (!ready && !disposed) {
+      // 冷启动窗口可能尚未就绪；保持 Flutter 入口并在稍后重试。
+      retry = Timer(const Duration(milliseconds: 500), ref.invalidateSelf);
+    }
+    return ready;
+  });
 });

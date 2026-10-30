@@ -15,71 +15,80 @@ class NightlightScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final session = ref.read(currentDeviceSessionNotifierProvider);
 
-    return Scaffold(
-      body: AnimatedBackground(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                child: Row(
-                  children: [
-                    BouncyButton(
-                      semanticLabel: MaterialLocalizations.of(
-                        context,
-                      ).backButtonTooltip,
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.chevron_left_rounded, size: 28),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        strings.nightlight,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: stateAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: FluxTheme.primary),
-                  ),
-                  error: (_, _) => Center(child: Text(strings.loadFailed)),
-                  data: (state) => ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+    return DuoPageToolbar(
+      builder: (context, useSystemToolbar) => Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: Row(
                     children: [
-                      NightlightEditor(
-                        value: state.nl,
-                        strings: strings,
-                        onChanged: (next) {
-                          session.updateNightlight(next);
-                        },
+                      if (!useSystemToolbar) ...[
+                        BouncyButton(
+                          semanticLabel: MaterialLocalizations.of(
+                            context,
+                          ).backButtonTooltip,
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.chevron_left_rounded,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+                      Expanded(
+                        child: Text(
+                          strings.nightlight,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                        ),
                       ),
-                      const SizedBox(height: 28),
-                      _NightlightTip(strings: strings),
                     ],
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: stateAsync.when(
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(
+                        color: FluxTheme.primary,
+                      ),
+                    ),
+                    error: (_, _) => Center(child: Text(strings.loadFailed)),
+                    data: (state) => ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                      children: [
+                        NightlightEditor(
+                          value: state.nl,
+                          strings: strings,
+                          onChanged: (next) {
+                            session.updateNightlight(next);
+                          },
+                        ),
+                        const SizedBox(height: 28),
+                        _NightlightTip(strings: strings),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -25,21 +25,100 @@ class ColorPickerSheet extends ConsumerStatefulWidget {
 class _ColorPickerSheetState extends ConsumerState<ColorPickerSheet> {
   late Color _currentColor;
   late final LatestValueDispatcher<Color> _dispatcher;
+  late final TextEditingController _hexController;
+  bool _invalidHex = false;
+  int? _focusedQuickColor;
+
+  String _hexValue(Color color) =>
+      '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
   @override
   void initState() {
     super.initState();
     _currentColor = widget.initialColor;
+    _hexController = TextEditingController(text: _hexValue(_currentColor));
     _dispatcher = LatestValueDispatcher<Color>(widget.onColorChanged);
   }
 
   void _selectColor(Color color) {
-    setState(() => _currentColor = color);
+    setState(() {
+      _currentColor = color;
+      _invalidHex = false;
+      _hexController.text = _hexValue(color);
+    });
     _dispatcher.submit(color);
+  }
+
+  void _applyHex() {
+    final value = _hexController.text.trim().replaceFirst(RegExp(r'^#'), '');
+    if (!RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(value)) {
+      setState(() => _invalidHex = true);
+      return;
+    }
+    _selectColor(Color(0xFF000000 | int.parse(value, radix: 16)));
+  }
+
+  Future<void> _replaceQuickColor(int index, Color color) async {
+    final message = ref.read(l10nProvider).quickColorSaved;
+    await ref.read(quickColorPaletteProvider.notifier).replace(index, color);
+    if (mounted) AppToast.success(context, message);
+  }
+
+  Future<void> _showReplaceQuickColor() async {
+    final l10n = ref.read(l10nProvider);
+    final isChinese = l10n is ZhStrings;
+    final color = _currentColor;
+    final palette = ref.read(quickColorPaletteProvider);
+    final index = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isChinese ? '替换快捷色' : 'Replace quick color'),
+        content: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isChinese
+                    ? '用当前颜色 ${_hexValue(color)} 替换选定的快捷色。'
+                    : 'Replace a selected quick color with ${_hexValue(color)}.',
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: palette.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: ExcludeSemantics(
+                      child: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: palette[index],
+                      ),
+                    ),
+                    title: Text('${l10n.quickColors} ${index + 1}'),
+                    subtitle: Text(_hexValue(palette[index])),
+                    onTap: () => Navigator.pop(context, index),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+    if (index != null && mounted) await _replaceQuickColor(index, color);
   }
 
   @override
   void dispose() {
+    _hexController.dispose();
     _dispatcher.dispose();
     super.dispose();
   }
@@ -48,167 +127,264 @@ class _ColorPickerSheetState extends ConsumerState<ColorPickerSheet> {
   Widget build(BuildContext context) {
     final presetColors = ref.watch(quickColorPaletteProvider);
     final l10n = ref.watch(l10nProvider);
+    final isChinese = l10n is ZhStrings;
 
-    return GlassSheet(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // 色盘之外固定占用的高度（手柄 40 + 间距 32 + 标题行 22 + 间距 12
-          // + 快捷色条 70 + 底部 24）。色盘高度必须由这份预算推导：只按宽度取
-          // 正方形时，「宽而矮」的外屏会把色盘撑到屏幕之外。
-          const chromeHeight = 200.0;
-          final safeBottom = MediaQuery.paddingOf(context).bottom;
-          final available = constraints.maxHeight.isFinite
-              ? constraints.maxHeight
-              : MediaQuery.sizeOf(context).height;
-          final wheelSide = math
-              .min(
-                constraints.maxWidth - 80,
-                available - chromeHeight - safeBottom,
-              )
-              .clamp(96.0, 320.0);
+    // ModalBottomSheet 不会替内容避让键盘；这里让可滚动区域收到真实可用高度。
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: GlassSheet(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // 额外预留44pt替换入口的高度；宽矮屏按剩余高度缩小色轮，
+            // 常规外屏仍完整显示色轮、HEX和快捷色。
+            // 大字或错误提示可自然增高并滚动，不裁切输入控件。
+            const chromeHeight = 224.0;
+            final safeBottom = MediaQuery.paddingOf(context).bottom;
+            final available = constraints.maxHeight.isFinite
+                ? constraints.maxHeight
+                : MediaQuery.sizeOf(context).height;
+            final wheelSide = math
+                .min(
+                  constraints.maxWidth - 80,
+                  available - chromeHeight - safeBottom,
+                )
+                .clamp(96.0, 320.0);
 
-          return SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 12, bottom: 24),
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(2),
+            return SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 12, bottom: 24),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
 
-                  // 自定义 HS 色盘（边长由上面的高度预算决定，任何姿态都不溢出）
-                  Center(
-                    child: SizedBox(
-                      key: const ValueKey('color-wheel'),
-                      width: wheelSide,
-                      height: wheelSide,
-                      child: _HSColorWheel(
-                        color: _currentColor,
-                        onChanged: _selectColor,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      children: [
-                        // 两段文案都必须可收缩：窄屏（折叠外屏 / 分屏）下
-                        // 固定宽度会直接把这一行撑破。
-                        Flexible(
-                          child: Text(
-                            l10n.quickColors,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(
-                            l10n.longPressColorToSave,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.right,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 快捷颜色栏
-                  SizedBox(
-                    height: 70, // Increased height for shadows and scaling
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      scrollDirection: Axis.horizontal,
-                      clipBehavior: Clip.none, // Prevent shadow clipping
-                      itemCount: presetColors.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(width: 16),
-                      itemBuilder: (context, index) {
-                        final color = presetColors[index];
-                        final isSelected =
-                            _currentColor.toARGB32() == color.toARGB32();
-
-                        return Center(
-                          // Center align to allow growth
-                          child: GestureDetector(
-                            key: ValueKey('quick-color-$index'),
-                            onTap: () {
-                              HapticFeedback.lightImpact();
-                              _selectColor(color);
-                            },
-                            onLongPress: () async {
-                              HapticFeedback.heavyImpact();
-                              await ref
-                                  .read(quickColorPaletteProvider.notifier)
-                                  .replace(index, _currentColor);
-                              if (context.mounted) {
-                                AppToast.success(context, l10n.quickColorSaved);
-                              }
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(
-                                milliseconds: 200,
-                              ), // Assuming 200.ms is an extension
-                              width: isSelected ? 48 : 40,
-                              height: isSelected ? 48 : 40,
-                              decoration: BoxDecoration(
-                                color: color,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: color.withValues(alpha: 0.4),
-                                    blurRadius: isSelected ? 12 : 6,
-                                    spreadRadius: isSelected ? 2 : 0,
-                                  ),
-                                ],
-                              ),
-                              alignment: Alignment.center,
-                              child: isSelected
-                                  ? Icon(
-                                      Icons.check,
-                                      color: color.computeLuminance() > 0.5
-                                          ? Colors.black
-                                          : Colors.white,
-                                      size: 24,
-                                    )
-                                  : null,
+                    // 自定义 HS 色盘（边长由上面的高度预算决定，任何姿态都不溢出）
+                    Center(
+                      child: SizedBox(
+                        width: wheelSide,
+                        height: wheelSide,
+                        child: Semantics(
+                          key: const ValueKey('color-wheel'),
+                          container: true,
+                          label: isChinese ? '色轮' : 'Color wheel',
+                          value: _hexValue(_currentColor),
+                          hint: isChinese
+                              ? '可在下方 HEX 输入精确设置颜色'
+                              : 'Enter a HEX value below to set an exact color',
+                          child: ExcludeSemantics(
+                            child: _HSColorWheel(
+                              color: _currentColor,
+                              onChanged: _selectColor,
                             ),
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 24),
-                ],
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: TextField(
+                        key: const ValueKey('color-hex-input'),
+                        controller: _hexController,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.done,
+                        textCapitalization: TextCapitalization.characters,
+                        scrollPadding: const EdgeInsets.all(24),
+                        onSubmitted: (_) => _applyHex(),
+                        decoration: InputDecoration(
+                          labelText: isChinese ? 'HEX 色值' : 'HEX color',
+                          hintText: '#RRGGBB',
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          border: const OutlineInputBorder(),
+                          errorText: _invalidHex
+                              ? (isChinese
+                                    ? '请输入 6 位 HEX 色值，如 #12ABCD'
+                                    : 'Enter 6 HEX digits, e.g. #12ABCD')
+                              : null,
+                          errorMaxLines: 2,
+                          suffixIconConstraints: const BoxConstraints(
+                            minWidth: 48,
+                            minHeight: 48,
+                          ),
+                          suffixIcon: IconButton(
+                            tooltip: isChinese ? '应用颜色' : 'Apply color',
+                            onPressed: _applyHex,
+                            icon: const Icon(Icons.check_rounded),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: [
+                          // 两段文案都必须可收缩：窄屏（折叠外屏 / 分屏）下
+                          // 固定宽度会直接把这一行撑破。
+                          Flexible(
+                            child: Text(
+                              l10n.quickColors,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: TextButton(
+                              onPressed: _showReplaceQuickColor,
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                minimumSize: const Size(44, 44),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                textStyle: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall,
+                              ),
+                              child: Text(
+                                isChinese ? '替换快捷色' : 'Replace quick color',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // 快捷颜色栏
+                    SizedBox(
+                      height: 54, // 48pt 热区与选中圆点，另留少量阴影空间
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        scrollDirection: Axis.horizontal,
+                        clipBehavior: Clip.none, // Prevent shadow clipping
+                        itemCount: presetColors.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 16),
+                        itemBuilder: (context, index) {
+                          final color = presetColors[index];
+                          final isSelected =
+                              _currentColor.toARGB32() == color.toARGB32();
+
+                          return Center(
+                            // Center align to allow growth
+                            child: Semantics(
+                              key: ValueKey('quick-color-$index'),
+                              button: true,
+                              selected: isSelected,
+                              label: '${l10n.quickColors} ${index + 1}',
+                              value: _hexValue(color),
+                              hint: l10n.longPressColorToSave,
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onFocusChange: (focused) => setState(() {
+                                  _focusedQuickColor = focused ? index : null;
+                                }),
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  _selectColor(color);
+                                },
+                                onLongPress: () async {
+                                  HapticFeedback.heavyImpact();
+                                  await _replaceQuickColor(
+                                    index,
+                                    _currentColor,
+                                  );
+                                },
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  foregroundDecoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: _focusedQuickColor == index
+                                        ? Border.all(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                            width: 3,
+                                          )
+                                        : null,
+                                  ),
+                                  child: Center(
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ), // Assuming 200.ms is an extension
+                                      width: isSelected ? 48 : 40,
+                                      height: isSelected ? 48 : 40,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          width: 1.5,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: color.withValues(alpha: 0.4),
+                                            blurRadius: isSelected ? 12 : 6,
+                                            spreadRadius: isSelected ? 2 : 0,
+                                          ),
+                                        ],
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: isSelected
+                                          ? Icon(
+                                              Icons.check,
+                                              color:
+                                                  color.computeLuminance() > 0.5
+                                                  ? Colors.black
+                                                  : Colors.white,
+                                              size: 24,
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -47,6 +47,10 @@ class _SmartSliderState extends State<SmartSlider> {
   // 当前显示的有效值 (优先显示拖拽值，否则显示外部传入值)
   double get _currentValue => _dragValue ?? widget.value;
 
+  String _formattedValue(double value) =>
+      widget.valueFormatter?.call(value) ??
+      '${value.round()}${widget.valueSuffix ?? ""}';
+
   void _handleChanged(double value) {
     if (!widget.enabled) return;
 
@@ -117,38 +121,52 @@ class _SmartSliderState extends State<SmartSlider> {
         if (widget.label.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Row(
-              children: [
-                if (widget.icon != null) ...[
-                  Icon(
-                    widget.icon,
-                    size: 16,
-                    color: widget.enabled
-                        ? mutedColor
-                        : mutedColor.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  widget.label,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: widget.enabled
-                        ? null
-                        : mutedColor.withValues(alpha: 0.5),
-                  ),
-                ),
-                const Spacer(),
-                if (widget.valueSuffix != null || widget.valueFormatter != null)
-                  Text(
-                    widget.valueFormatter?.call(_currentValue) ??
-                        '${_currentValue.round()}${widget.valueSuffix ?? ""}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: mutedColor,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+            child: ExcludeSemantics(
+              child: SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(
+                            widget.icon,
+                            size: 16,
+                            color: widget.enabled
+                                ? mutedColor
+                                : mutedColor.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Flexible(
+                          child: Text(
+                            widget.label,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: widget.enabled
+                                  ? null
+                                  : mutedColor.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-              ],
+                    if (widget.valueSuffix != null ||
+                        widget.valueFormatter != null)
+                      Text(
+                        _formattedValue(_currentValue),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: mutedColor,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         SliderTheme(
@@ -168,13 +186,19 @@ class _SmartSliderState extends State<SmartSlider> {
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
             trackShape: _CustomTrackShape(),
           ),
-          child: Slider(
-            value: _currentValue.clamp(widget.min, widget.max),
-            min: widget.min,
-            max: widget.max,
-            onChanged: widget.enabled ? _handleChanged : null,
-            onChangeStart: widget.enabled ? _handleChangeStart : null,
-            onChangeEnd: widget.enabled ? _handleChangeEnd : null,
+          child: MergeSemantics(
+            child: Semantics(
+              label: widget.label,
+              child: Slider(
+                value: _currentValue.clamp(widget.min, widget.max),
+                min: widget.min,
+                max: widget.max,
+                semanticFormatterCallback: _formattedValue,
+                onChanged: widget.enabled ? _handleChanged : null,
+                onChangeStart: widget.enabled ? _handleChangeStart : null,
+                onChangeEnd: widget.enabled ? _handleChangeEnd : null,
+              ),
+            ),
           ),
         ),
       ],

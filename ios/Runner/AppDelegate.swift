@@ -16,6 +16,17 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+
+    if let infoRegistrar = self.registrar(forPlugin: "flux/app_info") {
+      let infoChannel = FlutterMethodChannel(name: "flux/app_info", binaryMessenger: infoRegistrar.messenger())
+      infoChannel.setMethodCallHandler { call, result in
+        if call.method == "getAppVersion" {
+          result(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+        } else {
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
     
     // 使用 registrar API 获取 messenger，避免 rootViewController 访问警告
     if let registrar = self.registrar(forPlugin: "flux/mdns_discovery") {
@@ -94,9 +105,11 @@ import UIKit
   }
   
   private func stopDiscovery() {
+    bonjourBrowser?.delegate = nil
     bonjourBrowser?.stop()
     bonjourBrowser = nil
     for service in discoveredServices {
+      service.delegate = nil
       service.stop()
     }
     discoveredServices = []
@@ -114,6 +127,7 @@ import UIKit
 // MARK: - NetServiceBrowserDelegate
 extension AppDelegate: NetServiceBrowserDelegate {
   func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
+    guard browser === bonjourBrowser else { return }
     print("[Bonjour] Found service: \(service.name)")
     discoveredServices.append(service)
     service.delegate = self
@@ -122,14 +136,18 @@ extension AppDelegate: NetServiceBrowserDelegate {
   }
   
   func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) {
-    print("[Bonjour] Search error: \(errorDict)")
+    guard browser === bonjourBrowser else { return }
+    discoveryChannel?.invokeMethod("onDiscoveryError", arguments: [
+      "fatal": true, "stage": "search", "details": errorDict
+    ])
   }
 }
 
 // MARK: - NetServiceDelegate
 extension AppDelegate: NetServiceDelegate {
   func netServiceDidResolveAddress(_ sender: NetService) {
-    guard let addresses = sender.addresses else { return }
+    guard discoveredServices.contains(where: { $0 === sender }),
+          let addresses = sender.addresses else { return }
     
     for addressData in addresses {
       var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
@@ -161,7 +179,9 @@ extension AppDelegate: NetServiceDelegate {
             
             // 实时发送给 Flutter
             DispatchQueue.main.async { [weak self] in
-              self?.discoveryChannel?.invokeMethod("onDeviceFound", arguments: device)
+              guard let self = self,
+                    self.discoveredServices.contains(where: { $0 === sender }) else { return }
+              self.discoveryChannel?.invokeMethod("onDeviceFound", arguments: device)
             }
           }
         }
@@ -170,6 +190,9 @@ extension AppDelegate: NetServiceDelegate {
   }
   
   func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
-    print("[Bonjour] Failed to resolve \(sender.name): \(errorDict)")
+    guard discoveredServices.contains(where: { $0 === sender }) else { return }
+    discoveryChannel?.invokeMethod("onDiscoveryError", arguments: [
+      "fatal": false, "stage": "resolve", "name": sender.name, "details": errorDict
+    ])
   }
 }

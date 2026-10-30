@@ -13,12 +13,14 @@ class DeviceCard extends ConsumerStatefulWidget {
   final WledDevice device;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final bool selected;
 
   const DeviceCard({
     super.key,
     required this.device,
     required this.onTap,
     required this.onDelete,
+    this.selected = false,
   });
 
   @override
@@ -54,178 +56,185 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = ref.watch(l10nProvider);
+    final selectedFill = widget.selected
+        ? Color.alphaBlend(
+            FluxTheme.primary.withValues(alpha: isDark ? 0.14 : 0.06),
+            isDark ? FluxTheme.cardDark : Colors.white,
+          )
+        : null;
 
-    return RepaintBoundary(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        child: GestureDetector(
-          onSecondaryTapUp: PlatformUtils.isDesktop
-              ? (details) => _showDeleteContextMenu(
-                  context,
-                  ref,
-                  isDark,
-                  details.globalPosition,
-                )
-              : null,
-          child: BouncyButton(
-            onTap: widget.onTap,
-            onLongPress: PlatformUtils.isMobile
-                ? () {
-                    PlatformUtils.hapticHeavy();
-                    _showDeleteConfirm(context, ref, isDark);
-                  }
+    return Semantics(
+      container: true,
+      selected: widget.selected,
+      child: RepaintBoundary(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          child: GestureDetector(
+            onSecondaryTapUp: PlatformUtils.isDesktop
+                ? (details) => _showDeleteContextMenu(
+                    context,
+                    ref,
+                    isDark,
+                    details.globalPosition,
+                  )
                 : null,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  if (hasGlow)
-                    BoxShadow(
-                      color: glowColor.withValues(alpha: isDark ? 0.45 : 0.25),
-                      blurRadius: 32,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 8),
-                    ),
-                  if (isDark) // Deep depth shadow
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 24,
-                    ),
-                    decoration: FluxTheme.glassDecoration(
-                      context,
-                      radius: 36,
-                      hasShadow: true,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            _buildStatusIcon(
-                              isOnline,
-                              isOn,
-                              deviceColor,
-                              isDark,
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Hero(
-                                    tag: 'name_${widget.device.id}',
-                                    child: Material(
-                                      type: MaterialType.transparency,
-                                      child: Text(
-                                        widget.device.name,
-                                        style: TextStyle(
-                                          fontSize: 19,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: -0.8,
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black87,
+            child: BouncyButton(
+              selected: widget.selected,
+              onTap: widget.onTap,
+              onLongPress: PlatformUtils.isMobile
+                  ? () {
+                      PlatformUtils.hapticHeavy();
+                      _showDeleteConfirm(context, ref, isDark);
+                    }
+                  : null,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: FluxTheme.deviceSurfaceShadow(isDark: isDark),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 24,
+                      ),
+                      decoration: FluxTheme.deviceSurfaceDecoration(
+                        context,
+                        color: deviceColor,
+                        isActive: hasGlow,
+                        surfaceColor: selectedFill,
+                        border: widget.selected
+                            ? Border.all(color: FluxTheme.primary, width: 2)
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              _buildStatusIcon(
+                                isOnline,
+                                isOn,
+                                deviceColor,
+                                isDark,
+                              ),
+                              const SizedBox(width: 20),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Hero(
+                                      tag: 'name_${widget.device.id}',
+                                      child: Material(
+                                        type: MaterialType.transparency,
+                                        child: Text(
+                                          widget.device.name,
+                                          style: TextStyle(
+                                            fontSize: 19,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -0.8,
+                                            color: isDark
+                                                ? Colors.white
+                                                : Colors.black87,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        maxLines: 1,
                                       ),
                                     ),
-                                  ),
-                                  Hero(
-                                    tag: 'ip_${widget.device.id}',
-                                    child: Material(
-                                      type: MaterialType.transparency,
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            widget.device.ip,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.5,
-                                              color: isDark
-                                                  ? Colors.white.withValues(
-                                                      alpha: 0.2,
-                                                    )
-                                                  : Colors.black38,
-                                            ),
-                                          ),
-                                          if (!isOnline) ...[
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              width: 4,
-                                              height: 4,
-                                              decoration: BoxDecoration(
-                                                color: isDark
-                                                    ? Colors.white24
-                                                    : Colors.black12,
-                                                shape: BoxShape.circle,
+                                    Hero(
+                                      tag: 'ip_${widget.device.id}',
+                                      child: Material(
+                                        type: MaterialType.transparency,
+                                        child: Wrap(
+                                          spacing: 8,
+                                          runSpacing: 4,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          children: [
+                                            Text(
+                                              widget.device.ip,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.5,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
                                               ),
                                             ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              !ref.watch(
-                                                    isWifiConnectedProvider,
-                                                  )
-                                                  ? '未连接局域网'
-                                                  : (stateAsync.hasError &&
-                                                            stateAsync.error
-                                                                .toString()
-                                                                .contains(
-                                                                  'unreachable',
-                                                                )
-                                                        ? '设备已离线'
-                                                        : '连接异常'),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.orange.withValues(
-                                                  alpha: 0.8,
+                                            if (!isOnline) ...[
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                width: 4,
+                                                height: 4,
+                                                decoration: BoxDecoration(
+                                                  color: isDark
+                                                      ? Colors.white24
+                                                      : Colors.black12,
+                                                  shape: BoxShape.circle,
                                                 ),
                                               ),
-                                            ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                stateAsync.isLoading
+                                                    ? l10n.connecting
+                                                    : !ref.watch(
+                                                        isWifiConnectedProvider,
+                                                      )
+                                                    ? l10n.notConnectedToLan
+                                                    : (stateAsync.error
+                                                              .toString()
+                                                              .contains(
+                                                                'unreachable',
+                                                              )
+                                                          ? l10n.deviceOffline
+                                                          : l10n.connectionError),
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isDark
+                                                      ? const Color(0xFFFCD34D)
+                                                      : const Color(0xFF92400E),
+                                                ),
+                                              ),
+                                            ],
                                           ],
-                                        ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            if (state != null)
-                              _buildPowerToggle(
-                                ref,
-                                state,
-                                glowColor,
-                                isDark,
-                                isOnline,
-                              ),
-                          ],
-                        ),
-                        if (isOnline && state != null) ...[
-                          const SizedBox(height: 28),
-                          _buildBrightnessControl(
-                            context,
-                            ref,
-                            state,
-                            brightness,
-                            isOn ? deviceColor : Colors.grey,
-                            isDark,
-                            l10n,
+                              if (state != null)
+                                _buildPowerToggle(
+                                  ref,
+                                  state,
+                                  glowColor,
+                                  isDark,
+                                  isOnline,
+                                ),
+                            ],
                           ),
+                          if (isOnline && state != null) ...[
+                            const SizedBox(height: 28),
+                            _buildBrightnessControl(
+                              context,
+                              ref,
+                              state,
+                              brightness,
+                              isOn ? deviceColor : Colors.grey,
+                              isDark,
+                              l10n,
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -372,9 +381,8 @@ class _DeviceCardState extends ConsumerState<DeviceCard> {
           boxShadow: [
             if (isOn)
               BoxShadow(
-                color: glowColor.withValues(alpha: isDark ? 0.3 : 0.5),
-                blurRadius: 20,
-                spreadRadius: 2,
+                color: glowColor.withValues(alpha: isDark ? 0.20 : 0.18),
+                blurRadius: 12,
               ),
             if (isDark)
               BoxShadow(

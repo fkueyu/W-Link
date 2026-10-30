@@ -49,16 +49,16 @@ final class DuoToolbarBridge: NSObject {
         return
       }
       switch call.method {
+      case "ensureAttached":
+        result(["attached": self.attachIfNeeded()])
       case "setVisible":
         let args = call.arguments as? [String: Any]
-        self.setVisible(args?["visible"] as? Bool ?? false)
-        result(nil)
+        result(self.setVisible(args?["visible"] as? Bool ?? false))
       case "setItems":
         let args = (call.arguments as? [String: Any]) ?? [:]
-        self.applyItems(args)
-        result(nil)
+        result(self.applyItems(args))
       case "isAttached":
-        result(["attached": self.navigationController != nil])
+        result(["attached": self.navigationController?.view.window != nil])
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -74,6 +74,7 @@ final class DuoToolbarBridge: NSObject {
   /// 会让 UIKit 把 root 的 view 从 nav 里摘走，界面直接空白。
   @discardableResult
   func attachIfNeeded() -> Bool {
+    guard #available(iOS 27.1, *) else { return false }
     if let nav = navigationController, nav.view.window != nil {
       return true
     }
@@ -116,7 +117,8 @@ final class DuoToolbarBridge: NSObject {
     )
 
     navigationController = nav
-    return true
+    barVisible = false
+    return nav.view.window != nil && root.view.window != nil
   }
 
   private static func keyWindow() -> UIWindow? {
@@ -136,14 +138,15 @@ final class DuoToolbarBridge: NSObject {
 
   // MARK: - 系统栏
 
-  private func setVisible(_ visible: Bool) {
-    guard barVisible != visible else { return }
-    barVisible = visible
-    guard attachIfNeeded(), let nav = navigationController else { return }
+  private func setVisible(_ visible: Bool) -> Bool {
+    guard let nav = navigationController, nav.view.window != nil else { return false }
+    guard barVisible != visible else { return true }
     nav.setNavigationBarHidden(!visible, animated: false)
+    barVisible = visible
     if visible {
       applyBarAppearance(nav.navigationBar)
     }
+    return true
   }
 
   /// 系统栏外观：透明底 + 品牌色 tint。
@@ -165,20 +168,42 @@ final class DuoToolbarBridge: NSObject {
 
   // MARK: - 按钮
 
-  private func applyItems(_ args: [String: Any]) {
-    guard attachIfNeeded(), let nav = navigationController else { return }
+  private func applyItems(_ args: [String: Any]) -> Bool {
+    guard let nav = navigationController, nav.view.window != nil,
+          let controller = nav.topViewController else { return false }
 
     let addLabel = args["addLabel"] as? String ?? "Add"
     let moreLabel = args["moreLabel"] as? String ?? "More"
+    let backLabel = args["backLabel"] as? String
+    let addSymbol = args["addSymbol"] as? String ?? "plus"
+    let addEnabled = args["addEnabled"] as? Bool ?? true
+    let showMenu = args["showMenu"] as? Bool ?? true
+    let showPrimary = args["showPrimary"] as? Bool ?? true
+    let addDestructive = args["addDestructive"] as? Bool ?? false
+    let addBusy = args["addBusy"] as? Bool ?? false
     menuSpec = (args["menu"] as? [[String: Any]]) ?? []
 
     let addItem = UIBarButtonItem(
-      image: UIImage(systemName: "plus"),
-      primaryAction: UIAction { [weak self] _ in
+      image: UIImage(systemName: addSymbol),
+      primaryAction: UIAction(title: addLabel, attributes: addDestructive ? .destructive : []) { [weak self] _ in
         self?.channel.invokeMethod("onAddTap", arguments: nil)
       }
     )
     addItem.accessibilityLabel = addLabel
+    addItem.isEnabled = addEnabled
+
+    if let backLabel = backLabel {
+      let backItem = UIBarButtonItem(
+        image: UIImage(systemName: "chevron.backward"),
+        primaryAction: UIAction { [weak self] _ in
+          self?.channel.invokeMethod("onBackTap", arguments: nil)
+        }
+      )
+      backItem.accessibilityLabel = backLabel
+      controller.navigationItem.leftBarButtonItem = backItem
+    } else {
+      controller.navigationItem.leftBarButtonItem = nil
+    }
 
     let moreItem = UIBarButtonItem(
       image: UIImage(systemName: "ellipsis"),
@@ -186,9 +211,23 @@ final class DuoToolbarBridge: NSObject {
     )
     moreItem.accessibilityLabel = moreLabel
 
-    nav.topViewController?.navigationItem.rightBarButtonItems = [moreItem, addItem]
+    var rightItems: [UIBarButtonItem] = []
+    if showMenu { rightItems.append(moreItem) }
+    if showPrimary {
+      if addBusy {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.isAccessibilityElement = true
+        spinner.accessibilityLabel = addLabel
+        spinner.startAnimating()
+        rightItems.append(UIBarButtonItem(customView: spinner))
+      } else {
+        rightItems.append(addItem)
+      }
+    }
+    controller.navigationItem.rightBarButtonItems = rightItems
     // 标题留空：品牌信息由 Flutter 自己的头部承担，系统栏只放动作。
-    nav.topViewController?.navigationItem.title = ""
+    controller.navigationItem.title = ""
+    return true
   }
 
   private func buildMenu() -> UIMenu {
@@ -197,11 +236,17 @@ final class DuoToolbarBridge: NSObject {
       let title = entry["title"] as? String ?? id
       let symbol = entry["symbol"] as? String
       let isDestructive = entry["destructive"] as? Bool ?? false
+      let isEnabled = entry["enabled"] as? Bool ?? true
+      let isSelected = entry["selected"] as? Bool ?? false
+      var attributes: UIMenuElement.Attributes = []
+      if isDestructive { attributes.insert(.destructive) }
+      if !isEnabled { attributes.insert(.disabled) }
 
       return UIAction(
         title: title,
         image: symbol.flatMap { UIImage(systemName: $0) },
-        attributes: isDestructive ? .destructive : []
+        attributes: attributes,
+        state: isSelected ? .on : .off
       ) { [weak self] _ in
         self?.channel.invokeMethod("onMenuSelect", arguments: ["id": id])
       }

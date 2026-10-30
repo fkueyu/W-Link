@@ -17,6 +17,15 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
+    let infoChannel = FlutterMethodChannel(name: "flux/app_info", binaryMessenger: flutterViewController.engine.binaryMessenger)
+    infoChannel.setMethodCallHandler { call, result in
+      if call.method == "getAppVersion" {
+        result(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     super.awakeFromNib()
   }
 }

@@ -50,6 +50,13 @@ final class DuoGeometryBridge {
     }
   }
 
+  deinit {
+    if #available(iOS 27.1, *), let interaction = hingeInteraction as? UIHingeInteraction {
+      attachedView?.removeInteraction(interaction)
+    }
+    channel.setMethodCallHandler(nil)
+  }
+
   // MARK: - 快照
 
   private func geometrySnapshot() -> [String: Any] {
@@ -109,8 +116,16 @@ final class DuoGeometryBridge {
     guard #available(iOS 27.1, *) else { return }
     if hingeInteraction != nil && attachedView === view { return }
 
-    let interaction = UIHingeInteraction { [weak self] _, update in
-      guard let self = self else { return }
+    if let oldInteraction = hingeInteraction as? UIHingeInteraction {
+      attachedView?.removeInteraction(oldInteraction)
+    }
+    lastHinge = nil
+    attachedView = view
+
+    let interaction = UIHingeInteraction { [weak self] source, update in
+      guard let self = self,
+            let current = self.hingeInteraction as? UIHingeInteraction,
+            current === source else { return }
       // update.hinge 为 nil 表示离开了能提供铰链信息的层级。
       guard let hinge = update.hinge else {
         self.lastHinge = nil
@@ -122,9 +137,8 @@ final class DuoGeometryBridge {
       self.channel.invokeMethod("onHinge", arguments: payload)
     }
 
-    view.addInteraction(interaction)
     hingeInteraction = interaction
-    attachedView = view
+    view.addInteraction(interaction)
   }
 
   @available(iOS 27.1, *)
@@ -164,12 +178,22 @@ final class DuoGeometryBridge {
     for preferKey in [true, false] {
       for scene in ordered {
         for window in scene.windows where !preferKey || window.isKeyWindow {
-          if let controller = window.rootViewController as? FlutterViewController {
+          if let controller = flutterController(in: window.rootViewController) {
             return controller.view
           }
         }
       }
     }
     return nil
+  }
+
+  private func flutterController(in controller: UIViewController?) -> FlutterViewController? {
+    guard let controller else { return nil }
+    if let flutter = controller as? FlutterViewController { return flutter }
+    // 系统工具栏把 Flutter 放进导航容器后，窗口根节点不再是 Flutter。
+    for child in controller.children {
+      if let flutter = flutterController(in: child) { return flutter }
+    }
+    return flutterController(in: controller.presentedViewController)
   }
 }

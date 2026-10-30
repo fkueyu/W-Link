@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:multicast_dns/multicast_dns.dart';
 import '../models/wled_device.dart';
+import '../models/wled_info.dart';
 
 /// mDNS 设备发现服务
 /// iOS: 使用原生 Bonjour API (通过 MethodChannel)
@@ -12,7 +13,7 @@ class MdnsDiscoveryService {
   static const _channel = MethodChannel('flux/mdns_discovery');
 
   StreamController<WledDevice>? _currentScanController;
-  bool _isScanning = false;
+  Timer? _scanTimer;
   MDnsClient? _dartMdnsClient;
 
   /// 扫描局域网中的 WLED 设备
@@ -25,85 +26,105 @@ class MdnsDiscoveryService {
     final controller = StreamController<WledDevice>();
     _currentScanController = controller;
 
-    _startScan(duration);
-
-    // 当监听者取消订阅时（例如页面退出），停止扫描
     controller.onCancel = () {
-      stopScan();
+      if (identical(_currentScanController, controller)) stopScan();
     };
-
+    _startScan(controller, duration);
     return controller.stream;
   }
 
-  Future<void> _startScan(Duration duration) async {
-    if (_isScanning) return;
-    _isScanning = true;
+  bool _isCurrent(StreamController<WledDevice> controller) =>
+      identical(_currentScanController, controller) && !controller.isClosed;
 
-    // 1. 设置 MethodChannel 回调 (iOS/macOS)
+  void _fail(StreamController<WledDevice> controller, Object error) {
+    if (!_isCurrent(controller)) return;
+    controller.addError(error);
+    stopScan();
+  }
+
+  Future<void> _startScan(
+    StreamController<WledDevice> controller,
+    Duration duration,
+  ) async {
+    Object? resolutionError;
+    var found = false;
     _channel.setMethodCallHandler((call) async {
+      if (!_isCurrent(controller)) return;
       if (call.method == 'onDeviceFound') {
+        final args = call.arguments;
+        if (args is Map &&
+            args['ip'] is String &&
+            (args['ip'] as String).isNotEmpty) {
+          found = true;
+        }
         _handleDeviceFound(call.arguments);
+      } else if (call.method == 'onDiscoveryError') {
+        final args = call.arguments;
+        // 单个服务解析失败不终止其它服务的发现。
+        if (args is Map && args['fatal'] == false) {
+          resolutionError = PlatformException(
+            code: 'resolution_failed',
+            message: args.toString(),
+          );
+          return;
+        }
+        _fail(
+          controller,
+          PlatformException(code: 'discovery_failed', message: args.toString()),
+        );
       }
     });
-
-    try {
-      // 2. 启动原生 mDNS 扫描
-      if (Platform.isIOS || Platform.isMacOS) {
-        debugPrint('[Discovery] Starting Native Bonjour Scan');
-        await _channel.invokeMethod('startDiscovery');
+    _scanTimer = Timer(duration, () {
+      if (!_isCurrent(controller)) return;
+      if (resolutionError != null && !found) {
+        _fail(controller, resolutionError!);
       } else {
-        // Android / Other: Use Dart multicast_dns
-        _scanUsingDartMdns();
-      }
-    } catch (e) {
-      debugPrint('[Discovery] Error starting scan: $e');
-      stopScan();
-    }
-
-    // 3. 设置超时
-    Future.delayed(duration, () {
-      if (_isScanning) {
-        debugPrint('[Discovery] Scan completed (timeout)');
         stopScan();
       }
     });
+    try {
+      if (Platform.isIOS || Platform.isMacOS) {
+        await _channel.invokeMethod('startDiscovery');
+      } else {
+        await _scanUsingDartMdns(controller);
+      }
+    } catch (error) {
+      _fail(controller, error);
+    }
   }
 
-  Future<void> _scanUsingDartMdns() async {
-    debugPrint('[Discovery] Starting Dart mDNS Scan');
-    _dartMdnsClient = MDnsClient();
+  Future<void> _scanUsingDartMdns(
+    StreamController<WledDevice> controller,
+  ) async {
+    final client = MDnsClient();
+    _dartMdnsClient = client;
     try {
-      await _dartMdnsClient!.start();
-
-      // 查找 _wled._tcp
+      await client.start();
+      if (!_isCurrent(controller)) {
+        client.stop();
+        return;
+      }
       final query = ResourceRecordQuery.serverPointer('_wled._tcp.local');
-
-      await for (final PtrResourceRecord ptr
-          in _dartMdnsClient!.lookup<PtrResourceRecord>(query)) {
-        if (!_isScanning) break;
-
-        await for (final SrvResourceRecord srv
-            in _dartMdnsClient!.lookup<SrvResourceRecord>(
-              ResourceRecordQuery.service(ptr.domainName),
-            )) {
-          await for (final IPAddressResourceRecord ip
-              in _dartMdnsClient!.lookup<IPAddressResourceRecord>(
-                ResourceRecordQuery.addressIPv4(srv.target),
-              )) {
-            // 简单的名字处理: "WLED-123456._wled._tcp.local" -> "WLED-123456"
-            final rawName = ptr.domainName.split('.').first;
-            // 移除前面的Instance名可能包含的转义字符等（暂且简单处理）
-
+      await for (final ptr in client.lookup<PtrResourceRecord>(query)) {
+        if (!_isCurrent(controller)) break;
+        await for (final srv in client.lookup<SrvResourceRecord>(
+          ResourceRecordQuery.service(ptr.domainName),
+        )) {
+          if (!_isCurrent(controller)) break;
+          await for (final ip in client.lookup<IPAddressResourceRecord>(
+            ResourceRecordQuery.addressIPv4(srv.target),
+          )) {
+            if (!_isCurrent(controller)) break;
             _handleDeviceFound({
-              'name': rawName,
+              'name': ptr.domainName.split('.').first,
               'ip': ip.address.address,
               'port': srv.port,
             });
           }
         }
       }
-    } catch (e) {
-      debugPrint('[Discovery] Dart mDNS Error: $e');
+    } catch (error) {
+      _fail(controller, error);
     }
   }
 
@@ -127,20 +148,16 @@ class MdnsDiscoveryService {
   }
 
   void stopScan() {
-    _isScanning = false;
-
-    if (_currentScanController != null) {
-      if (!_currentScanController!.isClosed) {
-        _currentScanController!.close();
-      }
-      _currentScanController = null;
-    }
-
+    _scanTimer?.cancel();
+    _scanTimer = null;
+    final controller = _currentScanController;
+    _currentScanController = null;
+    if (controller != null && !controller.isClosed) controller.close();
+    _channel.setMethodCallHandler(null);
     if (Platform.isIOS || Platform.isMacOS) {
-      try {
-        _channel.invokeMethod('stopDiscovery');
-        _channel.setMethodCallHandler(null);
-      } catch (_) {}
+      unawaited(
+        _channel.invokeMethod<void>('stopDiscovery').catchError((Object _) {}),
+      );
     }
 
     if (_dartMdnsClient != null) {
@@ -151,24 +168,28 @@ class MdnsDiscoveryService {
 
   /// 验证指定 IP 是否为 WLED 设备
   static Future<WledDevice?> verifyDevice(String ip, {int port = 80}) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
     try {
-      final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 3);
-      final request = await client.getUrl(
-        Uri.parse('http://$ip:$port/json/info'),
-      );
-      final response = await request.close();
-
-      if (response.statusCode == 200) {
+      return await (() async {
+        final request = await client.getUrl(
+          Uri(scheme: 'http', host: ip, port: port, path: '/json/info'),
+        );
+        final response = await request.close();
+        if (response.statusCode != 200) return null;
         final content = await response.transform(utf8.decoder).join();
         final json = jsonDecode(content) as Map<String, dynamic>;
-        final deviceName = json['name'] as String? ?? 'WLED $ip';
-        return WledDevice.manual(ip: ip, port: port, name: deviceName);
-      }
+        final name = json['name'] as String? ?? 'WLED $ip';
+        // 与连接后读取设备信息使用同一解析契约，不能仅凭 HTTP 200
+        // 和一个 name 就把普通 JSON 服务加入设备库。
+        final info = WledInfo.fromJson({...json, 'name': name});
+        if (info.ver.trim().isEmpty) return null;
+        return WledDevice.manual(ip: ip, port: port, name: info.name);
+      })().timeout(const Duration(seconds: 3));
     } catch (_) {
-      // 设备不可达或不是 WLED
+      return null;
+    } finally {
+      client.close(force: true);
     }
-    return null;
   }
 
   void dispose() {

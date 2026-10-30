@@ -113,14 +113,13 @@ void main() {
       tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
       Colors.transparent,
     );
-    final sectionHeader = find.ancestor(
-      of: find.byType(DeviceOverviewBar),
-      matching: find.byType(Row),
-    );
-    expect(sectionHeader, findsOneWidget);
+    final title = find.text('我的设备');
+    expect(title, findsOneWidget);
+    // 概览属于列表标题区；允许窄屏和大字时换行，不固定实现为Row。
     expect(
-      find.descendant(of: sectionHeader, matching: find.text('我的设备')),
-      findsOneWidget,
+      tester.getTopLeft(find.byType(DeviceOverviewBar)).dy -
+          tester.getTopLeft(title).dy,
+      inInclusiveRange(-24, 80),
     );
 
     await tester.pump(const Duration(seconds: 1));

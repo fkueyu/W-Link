@@ -8,18 +8,13 @@ import '../widgets/widgets.dart';
 import 'device_list_screen.dart';
 import 'device_control_screen.dart';
 
-/// 宽屏阈值：超过此宽度启用双栏布局
 const double _kSplitBreakpoint = 800;
-
-/// 双栏结构的定位键。布局判据按名字找这些节点，避免在测试里复制字符串。
 const String kSplitRowKey = 'adaptive-shell-split';
 const String kDeviceListPaneKey = 'adaptive-shell-device-list';
 const String kSplitDividerKey = 'adaptive-shell-divider';
 const String kDetailPaneKey = 'adaptive-shell-detail';
 
-/// 自适应布局壳
-/// - 宽屏（iPad 横屏 / macOS）：左边设备列表 + 右边控制页
-/// - 窄屏（iPhone / iPad 竖屏）：传统的 push 导航
+/// 设备任务由同一路由承载，路由内部根据约束切换单双栏。
 class AdaptiveShell extends ConsumerStatefulWidget {
   const AdaptiveShell({super.key});
 
@@ -28,16 +23,19 @@ class AdaptiveShell extends ConsumerStatefulWidget {
 }
 
 class _AdaptiveShellState extends ConsumerState<AdaptiveShell> {
-  WledDevice? _selectedDevice;
-
-  void _onDeviceSelected(WledDevice device) {
-    setState(() => _selectedDevice = device);
-    ref.read(currentDeviceIdProvider.notifier).state = device.id;
-  }
+  final _deviceListStorage = PageStorageBucket();
+  int _selectionGeneration = 0;
 
   @override
   Widget build(BuildContext context) {
     final l10n = ref.watch(l10nProvider);
+    // 选择只保存ID；重命名和删除都以设备库中的最新对象为准。
+    ref.listen(deviceListProvider, (_, devices) {
+      final selected = ref.read(currentDeviceIdProvider);
+      if (selected != null && !devices.any((device) => device.id == selected)) {
+        ref.read(currentDeviceIdProvider.notifier).state = null;
+      }
+    });
     ref.listen<DeviceCommandFailure?>(deviceCommandFailureProvider, (
       previous,
       next,
@@ -45,51 +43,120 @@ class _AdaptiveShellState extends ConsumerState<AdaptiveShell> {
       if (next == null || next.sequence == previous?.sequence) return;
       AppToast.error(context, l10n.controlFailed);
     });
+    return _AdaptiveDeviceLayout(
+      showSelection: false,
+      deviceListStorage: _deviceListStorage,
+      onDeviceSelected: (device) async {
+        final generation = ++_selectionGeneration;
+        ref.read(currentDeviceIdProvider.notifier).state = device.id;
+        final isWide =
+            MediaQuery.sizeOf(context).width > _kSplitBreakpoint &&
+            !(ref.read(duoGeometryProvider).valueOrNull?.needsSinglePane ??
+                false);
+        // 宽屏不播放整页进入动画；共享列表存储，让设备任务延续左栏位置。
+        final route = _DeviceTaskRoute(
+          enterWithoutAnimation: isWide,
+          builder: (_) => _AdaptiveDeviceLayout(
+            showSelection: true,
+            deviceListStorage: _deviceListStorage,
+            animateListEntrance: false,
+            onDeviceSelected: (selected) {
+              ref.read(currentDeviceIdProvider.notifier).state = selected.id;
+            },
+          ),
+        );
+        await Navigator.of(context).push<void>(route);
+        // popped在退出动画开始时完成；completed才代表路由和画面已退出。
+        await route.completed;
+        if (mounted && generation == _selectionGeneration) {
+          ref.read(currentDeviceIdProvider.notifier).state = null;
+        }
+      },
+    );
+  }
+}
 
+class _DeviceTaskRoute extends MaterialPageRoute<void> {
+  _DeviceTaskRoute({
+    required super.builder,
+    required this.enterWithoutAnimation,
+  });
+  final bool enterWithoutAnimation;
+  @override
+  Duration get transitionDuration =>
+      enterWithoutAnimation ? Duration.zero : super.transitionDuration;
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 300);
+}
+
+class _AdaptiveDeviceLayout extends ConsumerWidget {
+  const _AdaptiveDeviceLayout({
+    required this.showSelection,
+    required this.onDeviceSelected,
+    required this.deviceListStorage,
+    this.animateListEntrance = true,
+  });
+  final PageStorageBucket deviceListStorage;
+  final bool animateListEntrance;
+  final bool showSelection;
+  final ValueChanged<WledDevice> onDeviceSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedDevice = showSelection
+        ? ref.watch(currentDeviceProvider)
+        : null;
     return LayoutBuilder(
       builder: (context, constraints) {
         final duo = ref.watch(duoGeometryProvider).valueOrNull;
-
-        // 半折/横折时内容会被折痕拦腰切断，横向双栏必须让位给单栏。
-        // 拿不到折叠信息（非折叠设备、系统低于 iOS 27.1）时两条都为 false，
-        // 布局与改动前逐像素一致。
-        final foldX = duo?.verticalFoldX;
+        final safePadding = MediaQuery.paddingOf(context);
+        final availableWidth = constraints.maxWidth - safePadding.horizontal;
+        // 桥的坐标属于FlutterView，Row的坐标属于SafeArea内容区。
+        final foldX = duo?.verticalFoldX == null
+            ? null
+            : duo!.verticalFoldX! - safePadding.left;
         final isWide =
             constraints.maxWidth > _kSplitBreakpoint &&
             !(duo?.needsSinglePane ?? false);
-
         if (!isWide) {
-          // 窄屏：直接使用原有的设备列表页（带 push 导航）
-          return const DeviceListScreen();
+          if (selectedDevice != null) {
+            return DeviceControlScreen(
+              key: ValueKey(selectedDevice.id),
+              device: selectedDevice,
+            );
+          }
+          return PageStorage(
+            bucket: deviceListStorage,
+            child: DeviceListScreen(
+              onDeviceSelected: onDeviceSelected,
+              embedded: false,
+              animateEntrance: animateListEntrance,
+            ),
+          );
         }
-
-        // 竖折时把分隔线对到折痕上：两栏各自完整地待在半个屏幕上，
-        // 分隔线就是物理折痕，不再额外画一条。折痕位置超出可用区间
-        // （太窄的左栏 / 太宽的左栏）就退回固定 340，不硬套。
         final foldAligned =
-            foldX != null &&
-            foldX >= 300 &&
-            foldX <= constraints.maxWidth * 0.55;
-
-        // 宽屏：双栏布局
+            foldX != null && foldX >= 300 && foldX <= availableWidth * 0.55;
         final isDark = Theme.of(context).brightness == Brightness.dark;
-
         return Scaffold(
           body: AnimatedBackground(
             child: SafeArea(
               child: Row(
                 key: const Key(kSplitRowKey),
                 children: [
-                  // ── 左栏：设备列表 ──
                   SizedBox(
                     key: const Key(kDeviceListPaneKey),
                     width: foldAligned ? foldX : 340,
-                    child: DeviceListScreen(
-                      onDeviceSelected: _onDeviceSelected,
-                      selectedDeviceId: _selectedDevice?.id,
+                    child: PageStorage(
+                      bucket: deviceListStorage,
+                      child: DeviceListScreen(
+                        embedded: true,
+                        onDeviceSelected: onDeviceSelected,
+                        selectedDeviceId: selectedDevice?.id,
+                        systemToolbarVisible: selectedDevice == null,
+                        animateEntrance: animateListEntrance,
+                      ),
                     ),
                   ),
-                  // ── 分隔线（折痕对齐时由硬件折痕充当） ──
                   if (!foldAligned)
                     Container(
                       key: const Key(kSplitDividerKey),
@@ -98,16 +165,15 @@ class _AdaptiveShellState extends ConsumerState<AdaptiveShell> {
                           ? Colors.white.withValues(alpha: 0.08)
                           : Colors.black.withValues(alpha: 0.06),
                     ),
-                  // ── 右栏：控制页 ──
                   Expanded(
                     key: const Key(kDetailPaneKey),
-                    child: _selectedDevice != null
+                    child: selectedDevice != null
                         ? DeviceControlScreen(
-                            key: ValueKey(_selectedDevice!.id),
-                            device: _selectedDevice!,
+                            key: ValueKey(selectedDevice.id),
+                            device: selectedDevice,
                             embedded: true,
                           )
-                        : _buildEmptyDetail(isDark),
+                        : _buildEmptyDetail(context, ref),
                   ),
                 ],
               ),
@@ -118,31 +184,27 @@ class _AdaptiveShellState extends ConsumerState<AdaptiveShell> {
     );
   }
 
-  Widget _buildEmptyDetail(bool isDark) {
+  Widget _buildEmptyDetail(BuildContext context, WidgetRef ref) {
     final l10n = ref.watch(l10nProvider);
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.touch_app_rounded,
-            size: 64,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.15)
-                : Colors.black.withValues(alpha: 0.1),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            l10n.selectDevices,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.3)
-                  : Colors.black.withValues(alpha: 0.25),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.touch_app_rounded,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(
+              l10n.selectDevices,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ],
+        ),
       ),
     );
   }

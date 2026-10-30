@@ -8,6 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
 import '../core/core.dart';
 import '../providers/providers.dart';
+import '../services/duo_toolbar_service.dart';
 import '../widgets/widgets.dart';
 import 'package:http/http.dart' as http;
 
@@ -52,296 +53,341 @@ class _CustomPaletteEditorScreenState
     final currentDevice = ref.watch(currentDeviceProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: AnimatedBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                child: Row(
-                  children: [
-                    BouncyButton(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.chevron_left_rounded, size: 28),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        l10n.customPalette,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ),
-                    _buildSlotPicker(isDark, l10n),
-                  ],
-                ),
-              ),
+    final canUpload =
+        currentDevice != null && _colorStops.length >= 2 && !_isUploading;
 
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildSectionTitle(l10n.previewPalette, isDark),
-                    const SizedBox(height: 12),
-                    GlassCard(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          Container(
-                            height: 80,
+    return DuoPageToolbar(
+      primaryLabel: l10n.uploadPalette,
+      primarySymbol: 'square.and.arrow.up',
+      primaryEnabled: canUpload,
+      primaryBusy: _isUploading,
+      onPrimary: () {
+        if (canUpload) _uploadPalette(currentDevice.baseUrl);
+      },
+      menu: List.generate(
+        10,
+        (slot) => DuoToolbarMenuEntry(
+          id: 'slot_$slot',
+          title: '${l10n.paletteSlot} $slot',
+          symbol: 'internaldrive',
+          selected: slot == _selectedSlot,
+          enabled: !_isUploading,
+        ),
+      ),
+      onMenuSelected: (id) {
+        if (_isUploading || !id.startsWith('slot_')) return;
+        final slot = int.tryParse(id.substring(5));
+        if (slot != null && slot >= 0 && slot < 10) {
+          setState(() => _selectedSlot = slot);
+        }
+      },
+      builder: (context, useSystemToolbar) => Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: Row(
+                    children: [
+                      if (!useSystemToolbar) ...[
+                        BouncyButton(
+                          semanticLabel: l10n is ZhStrings ? '返回' : 'Back',
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              gradient: _buildGradient(),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 20,
-                                  spreadRadius: -5,
-                                ),
-                              ],
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.chevron_left_rounded,
+                              size: 28,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${l10n.paletteSlot} $_selectedSlot',
-                            style: TextStyle(
-                              color: isDark ? Colors.white38 : Colors.black38,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+                      Expanded(
+                        child: Text(
+                          l10n.customPalette,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                        ),
+                      ),
+                      if (!useSystemToolbar) _buildSlotPicker(isDark, l10n),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _buildSectionTitle(l10n.previewPalette, isDark),
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Container(
+                              height: 80,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                gradient: _buildGradient(),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 20,
+                                    spreadRadius: -5,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              '${l10n.paletteSlot} $_selectedSlot',
+                              style: TextStyle(
+                                color: isDark ? Colors.white38 : Colors.black38,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn().scale(
+                        begin: const Offset(0.95, 0.95),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _buildSectionTitle(
+                            '${l10n.color} (${_colorStops.length})',
+                            isDark,
+                          ),
+                          BouncyButton(
+                            onTap: _addColorStop,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: FluxTheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.add_rounded,
+                                    color: FluxTheme.primary,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    l10n.addColorStop,
+                                    style: const TextStyle(
+                                      color: FluxTheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
+                      const SizedBox(height: 12),
 
-                    const SizedBox(height: 32),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildSectionTitle(
-                          '${l10n.color} (${_colorStops.length})',
-                          isDark,
-                        ),
-                        BouncyButton(
-                          onTap: _addColorStop,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: FluxTheme.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.add_rounded,
-                                  color: FluxTheme.primary,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  l10n.addColorStop,
-                                  style: const TextStyle(
-                                    color: FluxTheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    if (_colorStops.isEmpty)
-                      _buildEmptyState(isDark, l10n)
-                    else
-                      ...List.generate(_colorStops.length, (index) {
-                        final stop = _colorStops[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child:
-                              GlassCard(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Row(
-                                      children: [
-                                        BouncyButton(
-                                          onTap: () => _pickColor(index),
-                                          child: Container(
-                                            width: 56,
-                                            height: 56,
-                                            decoration: BoxDecoration(
-                                              color: stop.color,
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                              border: Border.all(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.2,
+                      if (_colorStops.isEmpty)
+                        _buildEmptyState(isDark, l10n)
+                      else
+                        ...List.generate(_colorStops.length, (index) {
+                          final stop = _colorStops[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child:
+                                GlassCard(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Row(
+                                        children: [
+                                          BouncyButton(
+                                            onTap: () => _pickColor(index),
+                                            child: Container(
+                                              width: 56,
+                                              height: 56,
+                                              decoration: BoxDecoration(
+                                                color: stop.color,
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.2),
+                                                  width: 2,
                                                 ),
-                                                width: 2,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: stop.color.withValues(
-                                                    alpha: 0.3,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: stop.color
+                                                        .withValues(alpha: 0.3),
+                                                    blurRadius: 10,
+                                                    spreadRadius: -2,
                                                   ),
-                                                  blurRadius: 10,
-                                                  spreadRadius: -2,
+                                                ],
+                                              ),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.colorize_rounded,
+                                                  color: Colors.white,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  '${l10n.colorPosition}: ${stop.position}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                                Slider(
+                                                  value: stop.position
+                                                      .toDouble(),
+                                                  min: 0,
+                                                  max: 255,
+                                                  activeColor: stop.color,
+                                                  onChanged: (val) => setState(
+                                                    () => stop.position = val
+                                                        .round(),
+                                                  ),
                                                 ),
                                               ],
                                             ),
-                                            child: const Center(
-                                              child: Icon(
-                                                Icons.colorize_rounded,
-                                                color: Colors.white,
-                                                size: 20,
+                                          ),
+                                          BouncyButton(
+                                            onTap: () =>
+                                                _removeColorStop(index),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              child: const Icon(
+                                                Icons.delete_outline_rounded,
+                                                color: Colors.redAccent,
+                                                size: 24,
                                               ),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '${l10n.colorPosition}: ${stop.position}',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                              Slider(
-                                                value: stop.position.toDouble(),
-                                                min: 0,
-                                                max: 255,
-                                                activeColor: stop.color,
-                                                onChanged: (val) => setState(
-                                                  () => stop.position = val
-                                                      .round(),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        BouncyButton(
-                                          onTap: () => _removeColorStop(index),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            child: const Icon(
-                                              Icons.delete_outline_rounded,
-                                              color: Colors.redAccent,
-                                              size: 24,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                  .animate()
-                                  .fadeIn(delay: (index * 50).ms)
-                                  .slideX(begin: 0.05),
-                        );
-                      }),
-                    const SizedBox(height: 100),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton:
-          BouncyButton(
-                onTap: _isUploading || _colorStops.length < 2
-                    ? null
-                    : () => _uploadPalette(currentDevice?.ip),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _colorStops.length < 2
-                            ? Colors.grey.withValues(alpha: 0.2)
-                            : FluxTheme.primary.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          if (_colorStops.length >= 2)
-                            BoxShadow(
-                              color: FluxTheme.primary.withValues(alpha: 0.3),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                        ],
-                      ),
-                      child: _isUploading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.cloud_upload_rounded,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  l10n.uploadPalette,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
+                                        ],
+                                      ),
+                                    )
+                                    .animate()
+                                    .fadeIn(delay: (index * 50).ms)
+                                    .slideX(begin: 0.05),
+                          );
+                        }),
+                      const SizedBox(height: 100),
+                    ],
                   ),
                 ),
-              )
-              .animate()
-              .fadeIn(delay: 600.ms)
-              .slideY(begin: 0.5, curve: Curves.easeOutBack),
+              ],
+            ),
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: useSystemToolbar
+            ? null
+            : BouncyButton(
+                    onTap: canUpload
+                        ? () => _uploadPalette(currentDevice.baseUrl)
+                        : null,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _colorStops.length < 2
+                                ? Colors.grey.withValues(alpha: 0.2)
+                                : FluxTheme.primary.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              if (_colorStops.length >= 2)
+                                BoxShadow(
+                                  color: FluxTheme.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                            ],
+                          ),
+                          child: _isUploading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.cloud_upload_rounded,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      l10n.uploadPalette,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .animate()
+                  .fadeIn(delay: 600.ms)
+                  .slideY(begin: 0.5, curve: Curves.easeOutBack),
+      ),
     );
   }
 
   Widget _buildSlotPicker(bool isDark, AppStrings l10n) {
     return PopupMenuButton<int>(
+      enabled: !_isUploading,
       onSelected: (val) => setState(() => _selectedSlot = val),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
@@ -475,97 +521,100 @@ class _CustomPaletteEditorScreenState
     final l10n = ref.read(l10nProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    var draftColor = stop.color;
     final result = await showDialog<Color>(
       context: context,
-      builder: (context) =>
-          Center(
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: FluxDialogCard(
-                    isDark: isDark,
-                    radius: 28,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          '选择颜色',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 20,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        // 色轮内部是 Stack(fit: StackFit.expand)，必须拿到确定边长，
-                        // 否则在滚动容器里高度无界会直接报错；边长按弹窗内容预算推导，
-                        // 保证外屏（宽而矮）与半折姿态都不溢出。
-                        Builder(
-                          builder: (context) {
-                            final content = fluxDialogContentSize(context);
-                            final side = math
-                                .min(content.width, content.height - 116)
-                                .clamp(120.0, 280.0);
-                            return SizedBox(
-                              width: side,
-                              height: side,
-                              child: ColorPicker(
-                                color: stop.color,
-                                onColorChanged: (color) =>
-                                    setState(() => stop.color = color),
-                                pickersEnabled: const {
-                                  ColorPickerType.wheel: true,
-                                  ColorPickerType.accent: false,
-                                  ColorPickerType.primary: false,
-                                },
-                                enableShadesSelection: false,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text(
-                                  l10n.cancel,
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                              ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) =>
+            Center(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: FluxDialogCard(
+                      isDark: isDark,
+                      radius: 28,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            '选择颜色',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 20,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: FluxTheme.primary,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                          ),
+                          const SizedBox(height: 24),
+                          // 色轮内部是 Stack(fit: StackFit.expand)，必须拿到确定边长，
+                          // 否则在滚动容器里高度无界会直接报错；边长按弹窗内容预算推导，
+                          // 保证外屏（宽而矮）与半折姿态都不溢出。
+                          Builder(
+                            builder: (context) {
+                              final content = fluxDialogContentSize(context);
+                              final side = math
+                                  .min(content.width, content.height - 116)
+                                  .clamp(120.0, 280.0);
+                              return SizedBox(
+                                width: side,
+                                height: side,
+                                child: ColorPicker(
+                                  color: draftColor,
+                                  onColorChanged: (color) =>
+                                      setDialogState(() => draftColor = color),
+                                  pickersEnabled: const {
+                                    ColorPickerType.wheel: true,
+                                    ColorPickerType.accent: false,
+                                    ColorPickerType.primary: false,
+                                  },
+                                  enableShadesSelection: false,
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(
+                                    l10n.cancel,
+                                    style: const TextStyle(color: Colors.grey),
                                   ),
                                 ),
-                                onPressed: () =>
-                                    Navigator.pop(context, stop.color),
-                                child: Text(l10n.ok),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: FluxTheme.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  onPressed: () =>
+                                      Navigator.pop(context, draftColor),
+                                  child: Text(l10n.ok),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              )
-              .animate()
-              .scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOutBack)
-              .fadeIn(),
+                )
+                .animate()
+                .scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOutBack)
+                .fadeIn(),
+      ),
     );
 
-    if (result != null) {
-      setState(() => _colorStops[index].color = result);
+    if (mounted && result != null && _colorStops.contains(stop)) {
+      setState(() => stop.color = result);
     }
   }
 
-  Future<void> _uploadPalette(String? deviceIp) async {
-    if (deviceIp == null || _colorStops.length < 2) {
+  Future<void> _uploadPalette(String baseUrl) async {
+    if (_isUploading || _colorStops.length < 2) {
       return;
     }
     final l10n = ref.read(l10nProvider);
@@ -577,7 +626,7 @@ class _CustomPaletteEditorScreenState
       for (final stop in sorted) {
         paletteData.addAll(stop.toList());
       }
-      final uri = Uri.parse('http://$deviceIp/upload');
+      final uri = Uri.parse(baseUrl).resolve('/upload');
       final request = http.MultipartRequest('POST', uri)
         ..files.add(
           http.MultipartFile.fromString(
@@ -589,6 +638,7 @@ class _CustomPaletteEditorScreenState
       final response = await request.send().timeout(
         const Duration(seconds: 10),
       );
+      await response.stream.drain<void>().timeout(const Duration(seconds: 10));
       if (mounted) {
         if (response.statusCode == 200) {
           AppToast.success(context, l10n.uploadSuccess);

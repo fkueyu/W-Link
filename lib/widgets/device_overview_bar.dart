@@ -50,13 +50,44 @@ class _DeviceOverviewBarState extends State<DeviceOverviewBar> {
         '${widget.strings.deviceCount(widget.totalDevices)}, '
         '${widget.isWifiConnected ? widget.strings.networkReady : widget.strings.networkUnavailable}';
 
+    final items = <Widget>[
+      _StatusItem(
+        color: onlineColor,
+        label: widget.strings.onlineCount(widget.onlineDevices),
+      ),
+      Text(
+        widget.strings.deviceCount(widget.totalDevices),
+        style: TextStyle(
+          color: muted,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.1,
+        ),
+      ),
+      SizedBox.square(
+        dimension: 16,
+        child: _isRefreshing
+            ? const CircularProgressIndicator(
+                strokeWidth: 1.8,
+                color: FluxTheme.primary,
+              )
+            : Icon(
+                widget.isWifiConnected
+                    ? Icons.wifi_rounded
+                    : Icons.wifi_off_rounded,
+                size: 15,
+                color: widget.isWifiConnected ? muted : FluxTheme.warning,
+              ),
+      ),
+    ];
+    final largeText = MediaQuery.textScalerOf(context).scale(12) > 16;
     return BouncyButton(
       semanticLabel: semanticsLabel,
       onTap: _refresh,
       scaleTarget: 0.97,
       child: Container(
-        height: 36,
-        padding: const EdgeInsets.fromLTRB(12, 0, 10, 0),
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           color: isDark
               ? Colors.white.withValues(alpha: 0.065)
@@ -75,47 +106,28 @@ class _DeviceOverviewBarState extends State<DeviceOverviewBar> {
             ),
           ],
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _StatusItem(
-              color: onlineColor,
-              label: widget.strings.onlineCount(widget.onlineDevices),
-            ),
-            _divider(isDark),
-            Text(
-              widget.strings.deviceCount(widget.totalDevices),
-              maxLines: 1,
-              style: TextStyle(
-                color: muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.1,
+        child: largeText
+            ? Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: items,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  items[0],
+                  _divider(isDark),
+                  items[1],
+                  _divider(isDark, horizontalMargin: 7),
+                  items[2],
+                ],
               ),
-            ),
-            _divider(isDark, horizontalMargin: 9),
-            SizedBox.square(
-              dimension: 16,
-              child: _isRefreshing
-                  ? const CircularProgressIndicator(
-                      strokeWidth: 1.8,
-                      color: FluxTheme.primary,
-                    )
-                  : Icon(
-                      widget.isWifiConnected
-                          ? Icons.wifi_rounded
-                          : Icons.wifi_off_rounded,
-                      size: 15,
-                      color: widget.isWifiConnected ? muted : FluxTheme.warning,
-                    ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _divider(bool isDark, {double horizontalMargin = 10}) {
+  Widget _divider(bool isDark, {double horizontalMargin = 8}) {
     return Container(
       width: 1,
       height: 14,

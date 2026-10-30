@@ -17,163 +17,183 @@ class GroupsManagementScreen extends ConsumerWidget {
     final groups = ref.watch(deviceGroupsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: AnimatedBackground(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // iOS Style Navigation Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                child: Row(
-                  children: [
-                    BouncyButton(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.chevron_left_rounded, size: 28),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        '设备分组',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Groups List
-              Expanded(
-                child: groups.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.grid_view_rounded,
-                              size: 80,
+    return DuoPageToolbar(
+      primaryLabel: '新建分组',
+      onPrimary: () => _showCreateGroupDialog(context, ref),
+      builder: (context, useSystemToolbar) => Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // iOS Style Navigation Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  child: Row(
+                    children: [
+                      if (!useSystemToolbar) ...[
+                        BouncyButton(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
                               color: isDark
-                                  ? Colors.white10
-                                  : Colors.black.withValues(alpha: 0.1),
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '暂无分组',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? Colors.white30
-                                    : Colors.black.withValues(alpha: 0.3),
-                              ),
+                            child: const Icon(
+                              Icons.chevron_left_rounded,
+                              size: 28,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '点击下方按钮开启高效管理',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: isDark
-                                    ? Colors.white24
-                                    : Colors.black.withValues(alpha: 0.2),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                        itemCount: groups.length,
-                        itemBuilder: (context, index) {
-                          final group = groups[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: _GroupCard(group: group)
-                                .animate()
-                                .fadeIn(delay: (index * 100).ms)
-                                .slideY(begin: 0.1, curve: Curves.easeOutQuart),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton:
-          BouncyButton(
-                onTap: () => _showCreateGroupDialog(context, ref),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.white.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.8),
-                          width: 0.5,
+                        const SizedBox(width: 16),
+                      ],
+                      Expanded(
+                        child: Text(
+                          '设备分组',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.add_rounded,
-                            color: FluxTheme.primary,
-                            size: 24,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            '新建分组',
-                            style: TextStyle(
-                              color: FluxTheme.primary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
                 ),
-              )
-              .animate()
-              .fadeIn(delay: 500.ms)
-              .slideY(begin: 0.5, curve: Curves.easeOutBack),
+
+                // Groups List
+                Expanded(
+                  child: groups.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.grid_view_rounded,
+                                size: 80,
+                                color: isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.1),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                '暂无分组',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? Colors.white30
+                                      : Colors.black.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                useSystemToolbar
+                                    ? '点击工具栏新建分组开启高效管理'
+                                    : '点击下方按钮开启高效管理',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDark
+                                      ? Colors.white24
+                                      : Colors.black.withValues(alpha: 0.2),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            0,
+                            16,
+                            useSystemToolbar ? 24 : 100,
+                          ),
+                          itemCount: groups.length,
+                          itemBuilder: (context, index) {
+                            final group = groups[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: _GroupCard(group: group)
+                                  .animate()
+                                  .fadeIn(delay: (index * 100).ms)
+                                  .slideY(
+                                    begin: 0.1,
+                                    curve: Curves.easeOutQuart,
+                                  ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: useSystemToolbar
+            ? null
+            : BouncyButton(
+                    onTap: () => _showCreateGroupDialog(context, ref),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.white.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : Colors.white.withValues(alpha: 0.8),
+                              width: 0.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.add_rounded,
+                                color: FluxTheme.primary,
+                                size: 24,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                '新建分组',
+                                style: TextStyle(
+                                  color: FluxTheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .animate()
+                  .fadeIn(delay: 500.ms)
+                  .slideY(begin: 0.5, curve: Curves.easeOutBack),
+      ),
     );
   }
 

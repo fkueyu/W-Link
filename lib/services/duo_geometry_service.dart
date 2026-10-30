@@ -28,6 +28,7 @@ class DuoGeometryService {
   bool _disposed = false;
   int _attachRetries = 0;
   Timer? _retryTimer;
+  late final _MetricsObserver _observer = _MetricsObserver(this);
 
   /// 读一次快照。任何异常都退化成 [DuoGeometry.unsupported]。
   Future<DuoGeometry> read() async {
@@ -55,7 +56,7 @@ class DuoGeometryService {
       if (call.method == 'onHinge') await _refresh();
       return null;
     });
-    WidgetsBinding.instance.addObserver(_MetricsObserver(this));
+    WidgetsBinding.instance.addObserver(_observer);
     unawaited(_refresh());
   }
 
@@ -71,7 +72,7 @@ class DuoGeometryService {
 
     // 启动早期 FlutterViewController 的 view 可能还没挂上，桥会返回 attached=false。
     // 用一个短重试兜住这个窗口，之后交给尺寸变化与铰链事件驱动。
-    if (!geometry.attached && !_disposed) {
+    if (geometry.supported && !geometry.isFoldable && !_disposed) {
       if (_attachRetries < 5) {
         _attachRetries++;
         _retryTimer?.cancel();
@@ -88,6 +89,7 @@ class DuoGeometryService {
   void dispose() {
     _disposed = true;
     _retryTimer?.cancel();
+    if (_started) WidgetsBinding.instance.removeObserver(_observer);
     _channel.setMethodCallHandler(null);
     if (!_controller.isClosed) _controller.close();
   }

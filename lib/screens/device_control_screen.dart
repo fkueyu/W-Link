@@ -94,6 +94,9 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     final api = ref.watch(wledApiProvider);
     final l10n = ref.watch(l10nProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final useSystemToolbar =
+        ref.watch(duoToolbarReadyProvider).valueOrNull ?? false;
+    final routeIsCurrent = ModalRoute.of(context)?.isCurrent ?? true;
 
     // 监听实时设备对象以获取最新名称
     final currentDevice = ref.watch(currentDeviceProvider) ?? widget.device;
@@ -103,133 +106,161 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
         : FluxTheme.primary;
 
     return Scaffold(
-      body: DeviceAmbientBackground(
-        color: ambientColor,
-        isActive: ambientState?.on == true,
-        child: Stack(
-          children: [
-            // Safe Area Content
-            SafeArea(
-              child: stateAsync.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: FluxTheme.primary),
+      body: HeroMode(
+        enabled: !widget.embedded,
+        child: DeviceAmbientBackground(
+          color: ambientColor,
+          isActive: ambientState?.on == true,
+          child: Stack(
+            children: [
+              if (useSystemToolbar)
+                DuoSystemToolbar(
+                  visible: routeIsCurrent,
+                  backLabel: l10n.devices,
+                  onBack: () => Navigator.of(context).maybePop(),
+                  addLabel: l10n.deviceSettings,
+                  addSymbol: 'slider.horizontal.3',
+                  addEnabled: api != null && stateAsync.hasValue,
+                  showMenu: false,
+                  moreLabel: l10n.moreActions,
+                  menu: const [],
+                  onAdd: () =>
+                      _showSettingsSheet(context, stateAsync.valueOrNull, api),
+                  onMenuSelected: (_) {},
                 ),
-                error: (e, _) => _buildErrorState(e, l10n),
-                data: (state) => _buildMainContent(
-                  context,
-                  currentDevice,
-                  state,
-                  api,
-                  l10n,
-                  isDark,
+              // Safe Area Content
+              SafeArea(
+                child: stateAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: FluxTheme.primary),
+                  ),
+                  error: (e, _) => _buildErrorState(e, l10n, useSystemToolbar),
+                  data: (state) => _buildMainContent(
+                    context,
+                    currentDevice,
+                    state,
+                    api,
+                    l10n,
+                    isDark,
+                    useSystemToolbar,
+                  ),
                 ),
               ),
-            ),
 
-            // Top Glassy Navigation Bar (嵌入模式下隐藏)
-            if (!widget.embedded)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: ClipRRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      height: _topBarHeight(context),
-                      padding: EdgeInsets.only(
-                        top: MediaQuery.paddingOf(context).top,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF000000).withValues(
-                                alpha: 0.4,
-                              ) // Deeper glass
-                            : Colors.white.withValues(alpha: 0.2),
-                        border: Border(
-                          bottom: BorderSide(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : Colors.black.withValues(alpha: 0.05),
-                            width: 0.5,
+              // Top Glassy Navigation Bar (嵌入模式下隐藏)
+              if (!widget.embedded && !useSystemToolbar)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        height: _topBarHeight(context),
+                        padding: EdgeInsets.only(
+                          top: MediaQuery.paddingOf(context).top,
+                          left: MediaQuery.paddingOf(context).left,
+                          right: MediaQuery.paddingOf(context).right,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF000000).withValues(
+                                  alpha: 0.4,
+                                ) // Deeper glass
+                              : Colors.white.withValues(alpha: 0.2),
+                          border: Border(
+                            bottom: BorderSide(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              width: 0.5,
+                            ),
                           ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          BouncyButton(
-                            onTap: () => Navigator.pop(context),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.arrow_back_ios_new_rounded,
-                                    size: 20,
-                                    color: FluxTheme.primary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    l10n.devices,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            BouncyButton(
+                              semanticLabel: l10n.devices,
+                              onTap: () => Navigator.pop(context),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.arrow_back_ios_new_rounded,
+                                      size: 20,
                                       color: FluxTheme.primary,
                                     ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      l10n.devices,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: FluxTheme.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            BouncyButton(
+                              semanticLabel: l10n.deviceSettings,
+                              onTap: api == null || !stateAsync.hasValue
+                                  ? null
+                                  : () => _showSettingsSheet(
+                                      context,
+                                      stateAsync.valueOrNull,
+                                      api,
+                                    ),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 16),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: FluxTheme.primary.withValues(
+                                    alpha: 0.1,
                                   ),
-                                ],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.tune_rounded,
+                                  color: FluxTheme.primary,
+                                  size: 22,
+                                ),
                               ),
                             ),
-                          ),
-                          BouncyButton(
-                            onTap: () => _showSettingsSheet(
-                              context,
-                              stateAsync.valueOrNull,
-                              api,
-                            ),
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 16),
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: FluxTheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.tune_rounded,
-                                color: FluxTheme.primary,
-                                size: 22,
-                              ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-            // 嵌入模式：详情列自己的顶部动作条（贴右边缘，不铺满）
-            if (widget.embedded)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  left: false,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8, right: 16),
-                    child: _buildEmbeddedToolbar(
-                      context,
-                      stateAsync.valueOrNull,
-                      api,
-                      l10n,
+              // 嵌入模式：详情列自己的顶部动作条（贴右边缘，不铺满）
+              if (widget.embedded && !useSystemToolbar)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    left: false,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8, right: 16),
+                      child: _buildEmbeddedToolbar(
+                        context,
+                        stateAsync.valueOrNull,
+                        api,
+                        l10n,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -249,8 +280,10 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return BouncyButton(
       key: const ValueKey('device-settings-embedded'),
-      semanticLabel: l10n.settings,
-      onTap: () => _showSettingsSheet(context, state, api),
+      semanticLabel: l10n.deviceSettings,
+      onTap: api == null || state == null
+          ? null
+          : () => _showSettingsSheet(context, state, api),
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -274,55 +307,82 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     );
   }
 
-  Widget _buildErrorState(Object error, AppStrings l10n) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.cloud_off_rounded,
-            size: 64,
-            color: Colors.redAccent,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            l10n.connectionFailed,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
-          ),
-          const SizedBox(height: 8),
-          Hero(
-            tag: 'ip_${widget.device.id}',
-            child: Material(
-              type: MaterialType.transparency,
-              child: Text(
-                widget.device.ip,
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
+  Widget _buildErrorState(
+    Object error,
+    AppStrings l10n,
+    bool useSystemToolbar,
+  ) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        useSystemToolbar || widget.embedded
+            ? 16
+            : _kTopBarBaseHeight + _kTopBarGap,
+        24,
+        24,
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.cloud_off_rounded,
+                  size: 64,
+                  color: Colors.redAccent,
                 ),
-              ),
+                const SizedBox(height: 24),
+                Text(
+                  l10n.connectionFailed,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Hero(
+                  tag: 'ip_${widget.device.id}',
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Text(
+                      widget.device.ip,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                BouncyButton(
+                  onTap: () =>
+                      ref.read(currentDeviceSessionNotifierProvider).refresh(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: FluxTheme.primary,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      l10n.retry,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 32),
-          BouncyButton(
-            onTap: () =>
-                ref.read(currentDeviceSessionNotifierProvider).refresh(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              decoration: BoxDecoration(
-                color: FluxTheme.primary,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                l10n.retry,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     ).animate().fadeIn().scale();
   }
@@ -334,6 +394,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     WledApiService? api,
     AppStrings l10n,
     bool isDark,
+    bool useSystemToolbar,
   ) {
     final primaryColor = state.primaryColor != null
         ? ColorExtension.fromRgbList(state.primaryColor!)
@@ -348,10 +409,12 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: SizedBox(
-                height: widget.embedded
+                height: useSystemToolbar
+                    ? 16
+                    : widget.embedded
                     // 嵌入模式：动作条 44 + 顶部 8 内边距 + 一条 12 的呼吸
                     ? _kEmbeddedToolbarHeight + 8 + 12
-                    : _topBarHeight(context) + _kTopBarGap,
+                    : _kTopBarBaseHeight + _kTopBarGap,
               ),
             ), // Space for glass bar
             // 1. Unified Control Hero
@@ -421,15 +484,7 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
       duration: const Duration(milliseconds: 300),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          if (isOn)
-            BoxShadow(
-              color: color.withValues(alpha: isDark ? 0.35 : 0.2),
-              blurRadius: 40,
-              spreadRadius: 2,
-              offset: const Offset(0, 10),
-            ),
-        ],
+        boxShadow: FluxTheme.deviceSurfaceShadow(isDark: isDark),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),
@@ -437,10 +492,11 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            decoration: FluxTheme.glassDecoration(
+            decoration: FluxTheme.deviceSurfaceDecoration(
               context,
-              radius: 40,
-              hasShadow: true,
+              radius: 32,
+              color: color,
+              isActive: isOn,
             ),
             child: Column(
               children: [
@@ -685,9 +741,8 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
             boxShadow: [
               if (isOn)
                 BoxShadow(
-                  color: color.withValues(alpha: isDark ? 0.3 : 0.5),
-                  blurRadius: 20,
-                  spreadRadius: 2,
+                  color: color.withValues(alpha: isDark ? 0.20 : 0.18),
+                  blurRadius: 12,
                 ),
               if (isDark)
                 BoxShadow(
@@ -1250,17 +1305,21 @@ class _DeviceControlScreenState extends ConsumerState<DeviceControlScreen> {
     if (state == null || api == null) {
       return;
     }
+    final navigator = Navigator.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DeviceSettingsSheet(
+      builder: (sheetContext) => DeviceSettingsSheet(
         api: api,
         state: state,
-        onOpenNightlight: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const NightlightScreen()),
-        ),
+        onOpenNightlight: () {
+          if (!sheetContext.mounted || !navigator.mounted) return;
+          navigator.pop();
+          navigator.push(
+            MaterialPageRoute(builder: (_) => const NightlightScreen()),
+          );
+        },
       ),
     );
   }

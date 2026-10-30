@@ -34,227 +34,252 @@ class _EffectsListScreenState extends ConsumerState<EffectsListScreen> {
     final targetSeg = seg.where((s) => s.id == widget.segmentId).firstOrNull;
     final currentFx = targetSeg?.fx ?? 0;
 
-    return Scaffold(
-      body: AnimatedBackground(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                child: Row(
-                  children: [
-                    BouncyButton(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.chevron_left_rounded, size: 28),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        l10n.selectEffect,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ),
-                    BouncyButton(
-                      onTap: () =>
-                          setState(() => _showFavorites = !_showFavorites),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _showFavorites
-                              ? FluxTheme.primary.withValues(alpha: 0.1)
-                              : (isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.05)),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _showFavorites
-                              ? Icons.star_rounded
-                              : Icons.star_outline_rounded,
-                          color: _showFavorites
-                              ? FluxTheme.primary
-                              : (isDark ? Colors.white70 : Colors.black54),
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    final favoritesLabel = l10n is ZhStrings
+        ? (_showFavorites ? '显示全部' : '仅显示收藏')
+        : (_showFavorites ? 'Show all' : 'Show favorites only');
 
-              // Search bar
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.black.withValues(alpha: 0.03),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TextField(
-                    textAlignVertical: TextAlignVertical.center,
-                    decoration: InputDecoration(
-                      hintText: l10n.searchEffectHint,
-                      hintStyle: TextStyle(
-                        color: isDark ? Colors.white38 : Colors.black38,
-                        fontSize: 16,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        color: isDark ? Colors.white38 : Colors.black38,
-                        size: 20,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.only(bottom: 4),
-                    ),
-                    onChanged: (value) => setState(
-                      () => _searchQuery = value.toLowerCase().trim(),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // List
-              Expanded(
-                child: effectsAsync.when(
-                  loading: () => const SkeletonListView(itemHeight: 70),
-                  error: (e, s) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline_rounded,
-                          size: 48,
-                          color: FluxTheme.error,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.loadFailed,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 16),
+    return DuoPageToolbar(
+      primaryLabel: favoritesLabel,
+      primarySymbol: _showFavorites ? 'star.fill' : 'star',
+      onPrimary: () => setState(() => _showFavorites = !_showFavorites),
+      builder: (context, useSystemToolbar) => Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: Row(
+                    children: [
+                      if (!useSystemToolbar) ...[
                         BouncyButton(
-                          onTap: () => ref.invalidate(effectsProvider),
+                          semanticLabel: l10n is ZhStrings ? '返回' : 'Back',
+                          onTap: () => Navigator.pop(context),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: FluxTheme.primary,
-                              borderRadius: BorderRadius.circular(20),
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              shape: BoxShape.circle,
                             ),
-                            child: Text(
-                              l10n.retry,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: const Icon(
+                              Icons.chevron_left_rounded,
+                              size: 28,
                             ),
                           ),
                         ),
+                        const SizedBox(width: 16),
                       ],
+                      Expanded(
+                        child: Text(
+                          l10n.selectEffect,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                        ),
+                      ),
+                      if (!useSystemToolbar)
+                        BouncyButton(
+                          semanticLabel: favoritesLabel,
+                          selected: _showFavorites,
+                          onTap: () =>
+                              setState(() => _showFavorites = !_showFavorites),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _showFavorites
+                                  ? FluxTheme.primary.withValues(alpha: 0.1)
+                                  : (isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.black.withValues(alpha: 0.05)),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _showFavorites
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              color: _showFavorites
+                                  ? FluxTheme.primary
+                                  : (isDark ? Colors.white70 : Colors.black54),
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Search bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: TextField(
+                      textAlignVertical: TextAlignVertical.center,
+                      decoration: InputDecoration(
+                        hintText: l10n.searchEffectHint,
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.white38 : Colors.black38,
+                          fontSize: 16,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: isDark ? Colors.white38 : Colors.black38,
+                          size: 20,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
+                      ),
+                      onChanged: (value) => setState(
+                        () => _searchQuery = value.toLowerCase().trim(),
+                      ),
                     ),
                   ),
-                  data: (effects) {
-                    final isZh = l10n is ZhStrings;
-                    final filteredEffects = effects.asMap().entries.where((e) {
-                      if (_showFavorites && !favs.contains(e.key)) return false;
-                      if (_searchQuery.isEmpty) return true;
-                      final eng = e.value.toLowerCase();
-                      final zh = isZh
-                          ? getEffectChineseName(e.value).toLowerCase()
-                          : '';
-                      return eng.contains(_searchQuery) ||
-                          zh.contains(_searchQuery);
-                    }).toList();
-
-                    if (filteredEffects.isEmpty) {
-                      return EmptyState(
-                        icon: _showFavorites
-                            ? Icons.star_border_rounded
-                            : Icons.search_off_rounded,
-                        title: _showFavorites
-                            ? l10n.noFavorites
-                            : l10n.noResults,
-                        message: _showFavorites
-                            ? l10n.noFavoritesMsg
-                            : l10n.noResultsMsg,
-                      );
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-                      itemCount: filteredEffects.length,
-                      itemBuilder: (context, index) {
-                        final entry = filteredEffects[index];
-                        final fxIdx = entry.key;
-                        final name = entry.value;
-                        final isSelected = currentFx == fxIdx;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _EffectTile(
-                            englishName: name,
-                            chineseName: isZh
-                                ? getEffectChineseName(name)
-                                : name,
-                            index: fxIdx,
-                            isFavorite: favs.contains(fxIdx),
-                            onFavoriteToggle: () =>
-                                favsService.toggleEffectFavorite(fxIdx),
-                            isSelected: isSelected,
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              final sid = widget.segmentId;
-                              ref
-                                  .read(currentDeviceSessionNotifierProvider)
-                                  .optimisticUpdate(
-                                    (s) => s.copyWith(
-                                      ps: -1, // Clear preset selection when an effect is chosen
-                                      seg: s.seg
-                                          .map(
-                                            (seg) => seg.id == sid
-                                                ? seg.copyWith(fx: fxIdx)
-                                                : seg,
-                                          )
-                                          .toList(),
-                                    ),
-                                    () => api!.setSegmentState(sid, fx: fxIdx),
-                                  );
-                              Navigator.pop(context);
-                            },
-                          ).animate().fadeIn(delay: (index * 15).ms).slideX(begin: 0.05),
-                        );
-                      },
-                    );
-                  },
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 12),
+
+                // List
+                Expanded(
+                  child: effectsAsync.when(
+                    loading: () => const SkeletonListView(itemHeight: 70),
+                    error: (e, s) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            size: 48,
+                            color: FluxTheme.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            l10n.loadFailed,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 16),
+                          BouncyButton(
+                            onTap: () => ref.invalidate(effectsProvider),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: FluxTheme.primary,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                l10n.retry,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    data: (effects) {
+                      final isZh = l10n is ZhStrings;
+                      final filteredEffects = effects.asMap().entries.where((
+                        e,
+                      ) {
+                        if (_showFavorites && !favs.contains(e.key)) {
+                          return false;
+                        }
+                        if (_searchQuery.isEmpty) return true;
+                        final eng = e.value.toLowerCase();
+                        final zh = isZh
+                            ? getEffectChineseName(e.value).toLowerCase()
+                            : '';
+                        return eng.contains(_searchQuery) ||
+                            zh.contains(_searchQuery);
+                      }).toList();
+
+                      if (filteredEffects.isEmpty) {
+                        return EmptyState(
+                          icon: _showFavorites
+                              ? Icons.star_border_rounded
+                              : Icons.search_off_rounded,
+                          title: _showFavorites
+                              ? l10n.noFavorites
+                              : l10n.noResults,
+                          message: _showFavorites
+                              ? l10n.noFavoritesMsg
+                              : l10n.noResultsMsg,
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                        itemCount: filteredEffects.length,
+                        itemBuilder: (context, index) {
+                          final entry = filteredEffects[index];
+                          final fxIdx = entry.key;
+                          final name = entry.value;
+                          final isSelected = currentFx == fxIdx;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _EffectTile(
+                              englishName: name,
+                              chineseName: isZh
+                                  ? getEffectChineseName(name)
+                                  : name,
+                              index: fxIdx,
+                              isFavorite: favs.contains(fxIdx),
+                              onFavoriteToggle: () =>
+                                  favsService.toggleEffectFavorite(fxIdx),
+                              isSelected: isSelected,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                final sid = widget.segmentId;
+                                ref
+                                    .read(currentDeviceSessionNotifierProvider)
+                                    .optimisticUpdate(
+                                      (s) => s.copyWith(
+                                        ps: -1, // Clear preset selection when an effect is chosen
+                                        seg: s.seg
+                                            .map(
+                                              (seg) => seg.id == sid
+                                                  ? seg.copyWith(fx: fxIdx)
+                                                  : seg,
+                                            )
+                                            .toList(),
+                                      ),
+                                      () =>
+                                          api!.setSegmentState(sid, fx: fxIdx),
+                                    );
+                                Navigator.pop(context);
+                              },
+                            ).animate().fadeIn(delay: (index * 15).ms).slideX(begin: 0.05),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

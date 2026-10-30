@@ -28,128 +28,144 @@ class _SegmentsListScreenState extends ConsumerState<SegmentsListScreen> {
     final l10n = ref.watch(l10nProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: AnimatedBackground(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                child: Row(
-                  children: [
-                    BouncyButton(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.chevron_left_rounded, size: 28),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        l10n.segments,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    BouncyButton(
-                      onTap: () => _showAddSegmentDialog(context, api),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: FluxTheme.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.add_rounded,
-                          color: FluxTheme.primary,
-                          size: 28,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Info Row
-              stateAsync.when(
-                loading: () => const SizedBox.shrink(),
-                error: (e, st) => const SizedBox.shrink(),
-                data: (state) => Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    return DuoPageToolbar(
+      primaryLabel: l10n.addSegment,
+      primaryEnabled: api != null,
+      onPrimary: () => _showAddSegmentDialog(context, api),
+      builder: (context, useSystemToolbar) => Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                   child: Row(
                     children: [
-                      _buildMiniInfo(
-                        'LEDs',
-                        '${state.info.leds.count}',
-                        isDark,
+                      if (!useSystemToolbar) ...[
+                        BouncyButton(
+                          semanticLabel: l10n is ZhStrings ? '返回' : 'Back',
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.chevron_left_rounded,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+                      Expanded(
+                        child: Text(
+                          l10n.segments,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                        ),
                       ),
-                      const SizedBox(width: 12),
-                      _buildMiniInfo(
-                        l10n.segments,
-                        '${state.seg.length}',
-                        isDark,
-                      ),
+                      if (!useSystemToolbar) const SizedBox(width: 8),
+                      if (!useSystemToolbar)
+                        BouncyButton(
+                          semanticLabel: l10n.addSegment,
+                          onTap: api != null
+                              ? () => _showAddSegmentDialog(context, api)
+                              : null,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: FluxTheme.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add_rounded,
+                              color: FluxTheme.primary,
+                              size: 28,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
 
-              // List
-              Expanded(
-                child: stateAsync.when(
-                  loading: () => const SkeletonListView(itemHeight: 120),
-                  error: (e, s) => Center(child: Text('Error: $e')),
-                  data: (state) {
-                    final segments = state.seg
-                        .where((s) => s.stop > 0)
-                        .toList();
-
-                    // 为了让 2D 和 1D 界面的分段卡片展现出直观的物理顺序（按坐标自上而下、自左而右排列），而不是按创建 ID 的错乱顺序排列
-                    segments.sort((a, b) {
-                      if (a.startY != b.startY) {
-                        return a.startY.compareTo(b.startY);
-                      }
-                      return a.start.compareTo(b.start);
-                    });
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                      itemCount: segments.length,
-                      itemBuilder: (context, index) {
-                        final segment = segments[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _SegmentCard(
-                            segment: segment,
-                            index: index,
-                            api: api!,
-                            isDark: isDark,
-                            l10n: l10n,
-                            onDelete: () =>
-                                _confirmDelete(context, segment.id, api),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                // Info Row
+                stateAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, st) => const SizedBox.shrink(),
+                  data: (state) => Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        _buildMiniInfo(
+                          'LEDs',
+                          '${state.info.leds.count}',
+                          isDark,
+                        ),
+                        _buildMiniInfo(
+                          l10n.segments,
+                          '${state.seg.length}',
+                          isDark,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
+
+                // List
+                Expanded(
+                  child: stateAsync.when(
+                    loading: () => const SkeletonListView(itemHeight: 120),
+                    error: (e, s) => Center(child: Text('Error: $e')),
+                    data: (state) {
+                      final segments = state.seg
+                          .where((s) => s.stop > 0)
+                          .toList();
+
+                      // 为了让 2D 和 1D 界面的分段卡片展现出直观的物理顺序（按坐标自上而下、自左而右排列），而不是按创建 ID 的错乱顺序排列
+                      segments.sort((a, b) {
+                        if (a.startY != b.startY) {
+                          return a.startY.compareTo(b.startY);
+                        }
+                        return a.start.compareTo(b.start);
+                      });
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                        itemCount: segments.length,
+                        itemBuilder: (context, index) {
+                          final segment = segments[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _SegmentCard(
+                              segment: segment,
+                              index: index,
+                              api: api!,
+                              isDark: isDark,
+                              l10n: l10n,
+                              onDelete: () =>
+                                  _confirmDelete(context, segment.id, api),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1026,8 +1042,10 @@ class _SegmentCard extends ConsumerWidget {
               : Colors.black.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: 8,
+          runSpacing: 4,
           children: [
             Text(
               label,

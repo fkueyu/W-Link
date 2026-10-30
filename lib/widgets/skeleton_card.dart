@@ -27,15 +27,18 @@ class SkeletonCard extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.05)
         : Colors.black.withValues(alpha: 0.05);
 
-    return Container(
-          width: width,
-          height: height,
-          padding: padding,
-          decoration: BoxDecoration(
-            color: baseColor,
-            borderRadius: BorderRadius.circular(borderRadius),
-          ),
-        )
+    final card = Container(
+      width: width,
+      height: height,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: baseColor,
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) return card;
+
+    return card
         .animate(onPlay: (controller) => controller.repeat())
         .shimmer(
           duration: 1500.ms,

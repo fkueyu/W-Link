@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// 让 WLED 当前颜色成为控制页的环境光，而不是额外的装饰层。
+/// 控制页的微弱环境光：限制在安全区内部，主色光交给设备卡片本身。
 class DeviceAmbientBackground extends StatefulWidget {
   final Color color;
   final bool isActive;
@@ -36,9 +36,19 @@ class _DeviceAmbientBackgroundState extends State<DeviceAmbientBackground>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(DeviceAmbientBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) _syncAnimation();
+  }
+
+  void _syncAnimation() {
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    if (reduceMotion) {
+    if (reduceMotion || !widget.isActive) {
       _controller.stop();
       _controller.value = 0.35;
     } else if (!_controller.isAnimating) {
@@ -77,34 +87,48 @@ class _DeviceAmbientBackgroundState extends State<DeviceAmbientBackground>
             child: AnimatedBuilder(
               animation: _controller,
               builder: (context, _) {
-                final drift = math.sin(_controller.value * math.pi * 2);
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Positioned(
-                      top: -190 + drift * 30,
-                      left: -170 + drift * 24,
-                      child: _GlowOrb(
-                        size: 560,
-                        color: widget.color.withValues(
-                          alpha: isDark ? 0.42 : 0.20,
-                        ),
-                      ),
+                final breath =
+                    0.94 + 0.06 * math.sin(_controller.value * math.pi * 2);
+                final safe = MediaQuery.paddingOf(context);
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    safe.left + 24,
+                    safe.top + 24,
+                    safe.right + 24,
+                    safe.bottom + 24,
+                  ),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = math.min(constraints.maxWidth, 560.0);
+                        final height = math.min(
+                          constraints.maxHeight,
+                          math.min(width * 0.85, 320.0),
+                        );
+                        return SizedBox(
+                          width: width,
+                          height: height,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                colors: [
+                                  widget.color.withValues(
+                                    alpha: (isDark ? 0.07 : 0.035) * breath,
+                                  ),
+                                  widget.color.withValues(
+                                    alpha: (isDark ? 0.015 : 0.008) * breath,
+                                  ),
+                                  widget.color.withValues(alpha: 0),
+                                ],
+                                stops: const [0, 0.55, 1],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    Positioned(
-                      right: -210 - drift * 20,
-                      bottom: -230 + drift * 36,
-                      child: _GlowOrb(
-                        size: 520,
-                        color: HSLColor.fromColor(widget.color)
-                            .withHue(
-                              (HSLColor.fromColor(widget.color).hue + 42) % 360,
-                            )
-                            .toColor()
-                            .withValues(alpha: isDark ? 0.22 : 0.12),
-                      ),
-                    ),
-                  ],
+                  ),
                 );
               },
             ),
@@ -116,29 +140,6 @@ class _DeviceAmbientBackgroundState extends State<DeviceAmbientBackground>
         ),
         widget.child,
       ],
-    );
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  final double size;
-  final Color color;
-
-  const _GlowOrb({required this.size, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: size,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color, color.withValues(alpha: 0)],
-            stops: const [0, 1],
-          ),
-        ),
-      ),
     );
   }
 }

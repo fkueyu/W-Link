@@ -20,6 +20,7 @@ Future<void> _pumpShell(
   WidgetTester tester, {
   required DuoGeometry geometry,
   Size size = _innerScreen,
+  bool? ready,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -34,6 +35,9 @@ Future<void> _pumpShell(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         duoGeometryProvider.overrideWith((ref) => Stream.value(geometry)),
+        duoToolbarReadyProvider.overrideWith(
+          (ref) async => ready ?? geometry.isFoldable,
+        ),
       ],
       child: const MaterialApp(
         home: MediaQuery(
@@ -48,7 +52,10 @@ Future<void> _pumpShell(
 
 /// `flutter_animate` 在 initState 里挂零时长 Timer，测试结束时会触发
 /// 「A Timer is still pending」——框架假红，与本文件的判据无关，排空即可。
-void _toolbarTest(String description, Future<void> Function(WidgetTester) body) {
+void _toolbarTest(
+  String description,
+  Future<void> Function(WidgetTester) body,
+) {
   testWidgets(description, (tester) async {
     try {
       await body(tester);
@@ -64,7 +71,11 @@ void main() {
   _toolbarTest('折叠屏：自绘动作行让位给系统工具栏，不重复出现', (tester) async {
     await _pumpShell(
       tester,
-      geometry: const DuoGeometry(supported: true, attached: true),
+      geometry: const DuoGeometry(
+        supported: true,
+        attached: true,
+        hinge: DuoHinge(status: DuoHingeStatus.closed, angleRadians: 0),
+      ),
     );
 
     expect(find.byType(DuoSystemToolbar), findsOneWidget);
@@ -74,6 +85,29 @@ void main() {
   _toolbarTest('非折叠设备：没有系统工具栏，自绘行一个不少', (tester) async {
     await _pumpShell(tester, geometry: DuoGeometry.unsupported);
 
+    expect(find.byType(DuoSystemToolbar), findsNothing);
+    expect(find.byKey(const ValueKey('device-list-add')), findsOneWidget);
+  });
+
+  _toolbarTest('同系统支持API但无铰链：保留自绘入口', (tester) async {
+    await _pumpShell(
+      tester,
+      geometry: const DuoGeometry(supported: true, attached: true),
+    );
+    expect(find.byType(DuoSystemToolbar), findsNothing);
+    expect(find.byKey(const ValueKey('device-list-add')), findsOneWidget);
+  });
+
+  _toolbarTest('折叠设备原生握手失败：保留自绘入口', (tester) async {
+    await _pumpShell(
+      tester,
+      geometry: const DuoGeometry(
+        supported: true,
+        attached: true,
+        hinge: DuoHinge(status: DuoHingeStatus.closed, angleRadians: 0),
+      ),
+      ready: false,
+    );
     expect(find.byType(DuoSystemToolbar), findsNothing);
     expect(find.byKey(const ValueKey('device-list-add')), findsOneWidget);
   });

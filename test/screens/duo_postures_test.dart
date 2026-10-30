@@ -221,7 +221,7 @@ void main() {
 
   // ── R3 / R5：设备控制页 ─────────────────────────────────────────────────
   group('设备控制页（R3 顶部条与内容偏移同源 / R5 瓦片固定高度）', () {
-    testWidgets('内容偏移由顶部条实际高度推导，而不是写死 80', (tester) async {
+    testWidgets('内容偏移不重复计入SafeArea已经提供的顶部安全区', (tester) async {
       const size = Size(393, 600);
       usePosture(tester, size);
       await tester.pumpWidget(
@@ -241,8 +241,8 @@ void main() {
             )
             .first,
       );
-      // 顶部玻璃条 = 64 + padding.top，内容再留 16 的间距
-      expect(spacer.height, kReservedTop + 64 + 16);
+      // SafeArea已提供padding.top；占位仅为64pt自绘栏与16pt间距。
+      expect(spacer.height, 64 + 16);
       await drainTimers(tester);
     });
 

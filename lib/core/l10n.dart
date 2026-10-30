@@ -15,6 +15,10 @@ abstract class AppStrings {
   String get controllers;
   String get addDevice;
   String get settings;
+  String get deviceSettings;
+  String get connecting;
+  String get deviceOffline;
+  String get connectionError;
   String get webControl;
   String get deviceGroups;
   String get moreActions;
@@ -64,6 +68,8 @@ abstract class AppStrings {
   String get controlFailed;
   String get scanningNetwork;
   String get scanComplete;
+  String get scanFailed;
+  String get scanFailureHint;
   String get availableDevices;
   String get noDevicesFound;
   String get checkNetwork;
@@ -210,7 +216,7 @@ class ZhStrings implements AppStrings {
   @override
   String get noWifiWarning => '未连接到 Wi-Fi，可能无法控制局域网内的设备';
   @override
-  String get notConnectedToLan => '未连接局域网';
+  String get notConnectedToLan => '未连接 Wi-Fi';
   @override
   String get addFirstDeviceHint => '点按右上角的 ＋ 或下方按钮，添加您的第一台 WLED 设备';
   @override
@@ -227,6 +233,14 @@ class ZhStrings implements AppStrings {
   String get addDevice => '添加设备';
   @override
   String get settings => '设置';
+  @override
+  String get deviceSettings => '设备设置';
+  @override
+  String get connecting => '正在连接';
+  @override
+  String get deviceOffline => '设备已离线';
+  @override
+  String get connectionError => '连接异常';
   @override
   String get webControl => '网页控制';
   @override
@@ -279,9 +293,9 @@ class ZhStrings implements AppStrings {
   @override
   String get sync => '同步 (UDP)';
   @override
-  String get syncSend => '发送通知';
+  String get syncSend => '发送灯光同步';
   @override
-  String get syncReceive => '接收通知';
+  String get syncReceive => '接收灯光同步';
 
   @override
   String get deviceInfo => '设备信息';
@@ -357,13 +371,17 @@ class ZhStrings implements AppStrings {
   @override
   String get deviceAdded => '已添加设备';
   @override
-  String get connectionFailed => '无法连接到设备，请检查 IP 是否正确';
+  String get connectionFailed => '暂时无法连接设备，请检查设备电源和网络后重试';
   @override
   String get controlFailed => '控制失败，请检查设备连接';
   @override
   String get scanningNetwork => '正在扫描局域网...';
   @override
   String get scanComplete => '扫描完成';
+  @override
+  String get scanFailed => '扫描失败';
+  @override
+  String get scanFailureHint => '请检查局域网权限和网络后重试';
   @override
   String get availableDevices => '可添加的设备';
   @override
@@ -407,7 +425,7 @@ class ZhStrings implements AppStrings {
   @override
   String get groupName => '分组名称';
   @override
-  String get selectDevices => '选择设备';
+  String get selectDevices => '从左侧选择设备开始控制';
   @override
   String get currentEffect => '当前效果';
   @override
@@ -417,9 +435,9 @@ class ZhStrings implements AppStrings {
   @override
   String deviceCount(int n) => '共 $n 台';
   @override
-  String get networkReady => '局域网可用';
+  String get networkReady => '网络已连接';
   @override
-  String get networkUnavailable => '局域网不可用';
+  String get networkUnavailable => '未连接 Wi-Fi';
 
   @override
   String get noFavorites => '暂无收藏';
@@ -521,7 +539,7 @@ class ZhStrings implements AppStrings {
   @override
   String get transitionTime => '过渡时间';
   @override
-  String get animationSwitch => '动画切换';
+  String get animationSwitch => '灯光过渡时长';
   @override
   String get coverageRange => '覆盖范围';
   @override
@@ -585,7 +603,7 @@ class EnStrings implements AppStrings {
   String get noWifiWarning =>
       'Not connected to Wi-Fi. You may not be able to control devices on the local network.';
   @override
-  String get notConnectedToLan => 'Not connected to LAN';
+  String get notConnectedToLan => 'Not connected to Wi-Fi';
   @override
   String get addFirstDeviceHint =>
       'Tap + at the top right, or the button below, to add your first WLED device';
@@ -604,6 +622,14 @@ class EnStrings implements AppStrings {
   String get addDevice => 'Add Device';
   @override
   String get settings => 'Settings';
+  @override
+  String get deviceSettings => 'Device settings';
+  @override
+  String get connecting => 'Connecting';
+  @override
+  String get deviceOffline => 'Device offline';
+  @override
+  String get connectionError => 'Connection error';
   @override
   String get webControl => 'Web Control';
   @override
@@ -656,9 +682,9 @@ class EnStrings implements AppStrings {
   @override
   String get sync => 'Sync (UDP)';
   @override
-  String get syncSend => 'Send';
+  String get syncSend => 'Send light sync';
   @override
-  String get syncReceive => 'Receive';
+  String get syncReceive => 'Receive light sync';
 
   @override
   String get deviceInfo => 'Device Info';
@@ -735,13 +761,19 @@ class EnStrings implements AppStrings {
   @override
   String get deviceAdded => 'Device added';
   @override
-  String get connectionFailed => 'Connection failed. Check IP address.';
+  String get connectionFailed =>
+      'Unable to connect. Check device power and network, then retry.';
   @override
   String get controlFailed => 'Control failed. Check the device connection.';
   @override
   String get scanningNetwork => 'Scanning network...';
   @override
   String get scanComplete => 'Scan complete';
+  @override
+  String get scanFailed => 'Scan failed';
+  @override
+  String get scanFailureHint =>
+      'Check local network permissions and your connection, then retry.';
   @override
   String get availableDevices => 'Available Devices';
   @override
@@ -785,7 +817,7 @@ class EnStrings implements AppStrings {
   @override
   String get groupName => 'Group Name';
   @override
-  String get selectDevices => 'Select Devices';
+  String get selectDevices => 'Select a device on the left to start';
   @override
   String get currentEffect => 'Current Effect';
   @override
@@ -795,7 +827,7 @@ class EnStrings implements AppStrings {
   @override
   String deviceCount(int n) => '$n total';
   @override
-  String get networkReady => 'Local network';
+  String get networkReady => 'Network connected';
   @override
   String get networkUnavailable => 'Network unavailable';
 
@@ -899,7 +931,7 @@ class EnStrings implements AppStrings {
   @override
   String get transitionTime => 'Transition Time';
   @override
-  String get animationSwitch => 'Animation';
+  String get animationSwitch => 'Light transition duration';
   @override
   String get coverageRange => 'Coverage';
   @override

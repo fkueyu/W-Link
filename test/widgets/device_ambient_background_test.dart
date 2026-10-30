@@ -36,5 +36,6 @@ void main() {
 
     expect(find.byKey(const ValueKey('device-ambient-glow')), findsNothing);
     expect(find.text('controls'), findsOneWidget);
+    expect(tester.binding.transientCallbackCount, 0);
   });
 }

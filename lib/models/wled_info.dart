@@ -120,7 +120,7 @@ class WledLedInfo {
   @JsonKey(defaultValue: 1)
   final int lc;
 
-  /// 白平衡版本
+  /// 是否显示白光滑块（兼容现有整数表示：0/1）
   @JsonKey(defaultValue: 0)
   final int wv;
 
@@ -143,8 +143,14 @@ class WledLedInfo {
     this.seglc = const [],
   });
 
-  factory WledLedInfo.fromJson(Map<String, dynamic> json) =>
-      _$WledLedInfoFromJson(json);
+  factory WledLedInfo.fromJson(Map<String, dynamic> json) {
+    // WLED 的旧版能力字段 wv 为 bool；兼容设备返回的 0/1，
+    // 在解析边界归一化，避免整个设备信息因布尔值加载失败。
+    final whiteValue = json['wv'];
+    return _$WledLedInfoFromJson(
+      whiteValue is bool ? {...json, 'wv': whiteValue ? 1 : 0} : json,
+    );
+  }
 
   Map<String, dynamic> toJson() => _$WledLedInfoToJson(this);
 }

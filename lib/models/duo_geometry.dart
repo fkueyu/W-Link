@@ -97,8 +97,7 @@ class DuoRegion {
 /// - [divisionRegions]：折叠线位置（HIG 说的「分区」）；
 /// - [hinge]：铰链状态与角度（帐篷姿态靠它）。
 ///
-/// 两者都拿不到时 [supported] 为 false，所有 getter 返回 null，
-/// 布局与普通 iPhone 完全一致——桥坏了也不会改变现有观感。
+/// [supported] 只表示系统 API 可用；[isFoldable] 才表示检测到折叠硬件。
 class DuoGeometry {
   const DuoGeometry({
     this.supported = false,
@@ -119,6 +118,10 @@ class DuoGeometry {
   final List<DuoRegion> occlusionRegions;
   final Size viewSize;
   final double scale;
+
+  /// 已附着且确有铰链或折叠分区。非活动分区同样能证明折叠能力。
+  bool get isFoldable =>
+      supported && attached && (hinge != null || divisionRegions.isNotEmpty);
 
   /// 当前活动的分区（折叠线）。没有就是 null。
   DuoRegion? get activeDivision {

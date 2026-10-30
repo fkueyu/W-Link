@@ -39,10 +39,10 @@ void main() {
 
     expect(find.text('2 台在线'), findsOneWidget);
     expect(find.text('共 3 台'), findsOneWidget);
-    expect(find.text('局域网可用'), findsNothing);
+    expect(find.text('网络已连接'), findsNothing);
     expect(
       tester.getSemantics(find.byType(DeviceOverviewBar)).label,
-      contains('局域网可用'),
+      contains('网络已连接'),
     );
 
     await tester.tap(find.byType(DeviceOverviewBar));

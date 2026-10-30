@@ -42,7 +42,7 @@ class FluxTheme {
   static const Color _bgLight = Color(0xFFF0F2F5); // 柔和的灰调背景
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color _textPrimaryLight = Color(0xFF1E293B); // Slate 800
-  static const Color _textSecondaryLight = Color(0xFF64748B); // Slate 500
+  static const Color _textSecondaryLight = Color(0xFF526178); // 可读的次级文字
 
   // ===========================================================================
   // Gradients
@@ -124,6 +124,7 @@ class FluxTheme {
         onError: Colors.white,
         surface: surface,
         onSurface: textPrimary,
+        onSurfaceVariant: textSecondary,
       ),
 
       // AppBar
@@ -205,10 +206,7 @@ class FluxTheme {
         ),
         bodyLarge: TextStyle(color: textPrimary, fontSize: 16),
         bodyMedium: TextStyle(color: textSecondary, fontSize: 14),
-        bodySmall: TextStyle(
-          color: textSecondary.withValues(alpha: 0.8),
-          fontSize: 12,
-        ),
+        bodySmall: TextStyle(color: textSecondary, fontSize: 12),
       ),
 
       // Buttons
@@ -302,4 +300,53 @@ class FluxTheme {
       ),
     ];
   }
+
+  /// 设备开灯的色光只铺在卡片内部，边缘渐隐，避免外扩光晕被屏幕裁切。
+  static BoxDecoration deviceSurfaceDecoration(
+    BuildContext context, {
+    required Color color,
+    required bool isActive,
+    double radius = 28,
+    Color? surfaceColor,
+    Border? border,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = glassDecoration(context, radius: radius, color: surfaceColor);
+    final surface = base.color!;
+    return BoxDecoration(
+      // shader与底色在同一Paint中绘制，先混色并保留原玻璃透明度，
+      // 避免透明渐变替代填充后发灰或重复相乘底色alpha。
+      color: isActive ? null : surface,
+      borderRadius: base.borderRadius,
+      border: border ?? base.border,
+      gradient: isActive
+          ? RadialGradient(
+              center: const Alignment(0.65, -0.8),
+              radius: 1.35,
+              colors: [
+                Color.alphaBlend(
+                  color.withValues(alpha: isDark ? 0.12 : 0.055),
+                  surface,
+                ),
+                Color.alphaBlend(
+                  color.withValues(alpha: isDark ? 0.035 : 0.015),
+                  surface,
+                ),
+                surface,
+              ],
+              stops: const [0, 0.48, 1],
+            )
+          : null,
+    );
+  }
+
+  /// 轻量中性阴影只负责卡片层次，色彩由卡片内部的光承担。
+  static List<BoxShadow> deviceSurfaceShadow({required bool isDark}) => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.06),
+      blurRadius: 16,
+      spreadRadius: -4,
+      offset: const Offset(0, 5),
+    ),
+  ];
 }

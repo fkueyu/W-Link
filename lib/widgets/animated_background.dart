@@ -59,7 +59,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground>
     super.didChangeDependencies();
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    if (reduceMotion) {
+    if (reduceMotion || Theme.of(context).brightness != Brightness.dark) {
       _controller.stop();
       _controller.value = 0.35;
     } else if (!_controller.isAnimating) {

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/core.dart';
 import '../widgets/widgets.dart';
 import '../providers/settings_provider.dart';
+import '../providers/app_info_provider.dart';
 
 /// 设置页面
 class SettingsScreen extends ConsumerWidget {
@@ -16,186 +17,209 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = ref.watch(l10nProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = ref.watch(settingsProvider);
+    final version = ref.watch(appVersionProvider).valueOrNull;
     final settingsNotifier = ref.read(settingsProvider.notifier);
 
-    return Scaffold(
-      body: AnimatedBackground(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // iOS Style Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                child: Row(
-                  children: [
-                    BouncyButton(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
+    return DuoPageToolbar(
+      primaryLabel: l10n.resetData,
+      primarySymbol: 'arrow.counterclockwise',
+      primaryDestructive: true,
+      onPrimary: () => _confirmReset(context, ref, l10n, isDark),
+      builder: (context, useSystemToolbar) => Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // iOS Style Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: Row(
+                    children: [
+                      if (!useSystemToolbar) ...[
+                        BouncyButton(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.chevron_left_rounded,
+                              size: 28,
+                            ),
+                          ),
                         ),
-                        child: const Icon(Icons.chevron_left_rounded, size: 28),
+                        const SizedBox(width: 16),
+                      ],
+                      Expanded(
+                        child: Text(
+                          l10n.settings,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        l10n.settings,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              // Main List
-              Expanded(
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                  children: [
-                    // Interface Section
-                    _buildSectionTitle(l10n.interfaceAndLanguage),
-                    const SizedBox(height: 12),
-                    GlassCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _buildSelectionTile(
-                            context: context,
-                            title: l10n.language,
-                            icon: Icons.language_rounded,
-                            iconColor: Colors.blueAccent,
-                            value: _getLanguageName(settings.language, l10n),
-                            onTap: () => _showLanguagePicker(
-                              context,
-                              settingsNotifier,
-                              settings.language,
-                              l10n,
-                              isDark,
+                // Main List
+                Expanded(
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      0,
+                      16,
+                      useSystemToolbar ? 24 : 100,
+                    ),
+                    children: [
+                      // Interface Section
+                      _buildSectionTitle(l10n.interfaceAndLanguage),
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _buildSelectionTile(
+                              context: context,
+                              title: l10n.language,
+                              icon: Icons.language_rounded,
+                              iconColor: Colors.blueAccent,
+                              value: _getLanguageName(settings.language, l10n),
+                              onTap: () => _showLanguagePicker(
+                                context,
+                                settingsNotifier,
+                                settings.language,
+                                l10n,
+                                isDark,
+                              ),
                             ),
-                          ),
-                          _buildSelectionTile(
-                            context: context,
-                            title: l10n.theme,
-                            icon: Icons.palette_rounded,
-                            iconColor: Colors.purpleAccent,
-                            value: _getThemeModeName(settings.themeMode, l10n),
-                            onTap: () => _showThemePicker(
-                              context,
-                              settingsNotifier,
-                              settings.themeMode,
-                              l10n,
-                              isDark,
+                            _buildSelectionTile(
+                              context: context,
+                              title: l10n.theme,
+                              icon: Icons.palette_rounded,
+                              iconColor: Colors.purpleAccent,
+                              value: _getThemeModeName(
+                                settings.themeMode,
+                                l10n,
+                              ),
+                              onTap: () => _showThemePicker(
+                                context,
+                                settingsNotifier,
+                                settings.themeMode,
+                                l10n,
+                                isDark,
+                              ),
+                              isLast: true,
                             ),
-                            isLast: true,
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn().slideY(begin: 0.1),
+                          ],
+                        ),
+                      ).animate().fadeIn().slideY(begin: 0.1),
 
-                    const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
-                    // Experimental Features
-                    _buildSectionTitle(l10n.experimental),
-                    const SizedBox(height: 12),
-                    GlassCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _buildToggleTile(
-                            context: context,
-                            title: l10n.testMode,
-                            subtitle: l10n.testModeSubtitle,
-                            icon: Icons.bug_report_rounded,
-                            iconColor: Colors.amber,
-                            value: false,
-                            onChanged: (v) {},
-                            isLast: true,
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+                      // Experimental Features
+                      _buildSectionTitle(l10n.experimental),
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _buildToggleTile(
+                              context: context,
+                              title: l10n.testMode,
+                              subtitle: l10n.testModeSubtitle,
+                              icon: Icons.bug_report_rounded,
+                              iconColor: Colors.amber,
+                              value: false,
+                              onChanged: (v) {},
+                              isLast: true,
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
 
-                    const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
-                    // About Section
-                    _buildSectionTitle(l10n.aboutWLink),
-                    const SizedBox(height: 12),
-                    GlassCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _buildValueTile(
-                            context: context,
-                            title: l10n.appVersion,
-                            icon: Icons.info_outline_rounded,
-                            iconColor: Colors.tealAccent,
-                            value: 'v${AppConstants.appVersion}',
-                          ),
-                          _buildValueTile(
-                            context: context,
-                            title: l10n.projectUrl,
-                            icon: Icons.code_rounded,
-                            iconColor: Colors.orangeAccent,
-                            value: 'GitHub / fkueyu',
-                            onTap: () async {
-                              final url = Uri.parse(
-                                'https://github.com/fkueyu/W-Link',
-                              );
-                              if (await canLaunchUrl(url)) {
-                                await launchUrl(
-                                  url,
-                                  mode: LaunchMode.externalApplication,
+                      // About Section
+                      _buildSectionTitle(l10n.aboutWLink),
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _buildValueTile(
+                              context: context,
+                              title: l10n.appVersion,
+                              icon: Icons.info_outline_rounded,
+                              iconColor: Colors.tealAccent,
+                              value: version == null ? '—' : 'v$version',
+                            ),
+                            _buildValueTile(
+                              context: context,
+                              title: l10n.projectUrl,
+                              icon: Icons.code_rounded,
+                              iconColor: Colors.orangeAccent,
+                              value: 'GitHub / fkueyu',
+                              onTap: () async {
+                                final url = Uri.parse(
+                                  'https://github.com/fkueyu/W-Link',
                                 );
-                              }
-                            },
-                            isLast: true,
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-
-                    const SizedBox(height: 48),
-                    BouncyButton(
-                      onTap: () => _confirmReset(context, ref, l10n, isDark),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Colors.redAccent.withValues(alpha: 0.2),
-                          ),
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(
+                                    url,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                }
+                              },
+                              isLast: true,
+                            ),
+                          ],
                         ),
-                        child: Center(
-                          child: Text(
-                            l10n.resetData,
-                            style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
+                      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+
+                      if (!useSystemToolbar) ...[
+                        const SizedBox(height: 48),
+                        BouncyButton(
+                          onTap: () =>
+                              _confirmReset(context, ref, l10n, isDark),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.redAccent.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                l10n.resetData,
+                                style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ).animate().fadeIn(delay: 300.ms),
-                  ],
+                        ).animate().fadeIn(delay: 300.ms),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

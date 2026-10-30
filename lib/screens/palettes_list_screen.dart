@@ -36,297 +36,334 @@ class _PalettesListScreenState extends ConsumerState<PalettesListScreen> {
     final targetSeg = seg.where((s) => s.id == widget.segmentId).firstOrNull;
     final currentPal = targetSeg?.pal ?? 0;
 
-    return Scaffold(
-      body: AnimatedBackground(
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                child: Row(
-                  children: [
-                    BouncyButton(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.chevron_left_rounded, size: 28),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        l10n.selectPalette,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ),
-                    BouncyButton(
-                      onTap: () =>
-                          setState(() => _showFavorites = !_showFavorites),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _showFavorites
-                              ? FluxTheme.primary.withValues(alpha: 0.1)
-                              : (isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.05)),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _showFavorites
-                              ? Icons.star_rounded
-                              : Icons.star_outline_rounded,
-                          color: _showFavorites
-                              ? FluxTheme.primary
-                              : (isDark ? Colors.white70 : Colors.black54),
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    final favoritesLabel = l10n is ZhStrings
+        ? (_showFavorites ? '显示全部' : '仅显示收藏')
+        : (_showFavorites ? 'Show all' : 'Show favorites only');
 
-              // Search bar
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.black.withValues(alpha: 0.03),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TextField(
-                    textAlignVertical: TextAlignVertical.center,
-                    decoration: InputDecoration(
-                      hintText: l10n.searchPaletteHint,
-                      hintStyle: TextStyle(
-                        color: isDark ? Colors.white38 : Colors.black38,
-                        fontSize: 16,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        color: isDark ? Colors.white38 : Colors.black38,
-                        size: 20,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.only(bottom: 4),
-                    ),
-                    onChanged: (value) => setState(
-                      () => _searchQuery = value.toLowerCase().trim(),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // List
-              Expanded(
-                child: palettesAsync.when(
-                  loading: () => const SkeletonListView(itemHeight: 70),
-                  error: (e, s) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline_rounded,
-                          size: 48,
-                          color: FluxTheme.error,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          l10n.loadFailed,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 16),
+    return DuoPageToolbar(
+      primaryLabel: favoritesLabel,
+      primarySymbol: _showFavorites ? 'star.fill' : 'star',
+      onPrimary: () => setState(() => _showFavorites = !_showFavorites),
+      menu: [
+        DuoToolbarMenuEntry(
+          id: 'custom_palette',
+          title: l10n.customPalette,
+          symbol: 'paintpalette',
+        ),
+      ],
+      onMenuSelected: (id) {
+        if (id == 'custom_palette') _openCustomPaletteEditor();
+      },
+      builder: (context, useSystemToolbar) => Scaffold(
+        body: AnimatedBackground(
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: Row(
+                    children: [
+                      if (!useSystemToolbar) ...[
                         BouncyButton(
-                          onTap: () => ref.invalidate(palettesProvider),
+                          semanticLabel: l10n is ZhStrings ? '返回' : 'Back',
+                          onTap: () => Navigator.pop(context),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: FluxTheme.primary,
-                              borderRadius: BorderRadius.circular(20),
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              shape: BoxShape.circle,
                             ),
-                            child: Text(
-                              l10n.retry,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                            child: const Icon(
+                              Icons.chevron_left_rounded,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+                      Expanded(
+                        child: Text(
+                          l10n.selectPalette,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                        ),
+                      ),
+                      if (!useSystemToolbar)
+                        BouncyButton(
+                          semanticLabel: favoritesLabel,
+                          selected: _showFavorites,
+                          onTap: () =>
+                              setState(() => _showFavorites = !_showFavorites),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _showFavorites
+                                  ? FluxTheme.primary.withValues(alpha: 0.1)
+                                  : (isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.black.withValues(alpha: 0.05)),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _showFavorites
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              color: _showFavorites
+                                  ? FluxTheme.primary
+                                  : (isDark ? Colors.white70 : Colors.black54),
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Search bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: TextField(
+                      textAlignVertical: TextAlignVertical.center,
+                      decoration: InputDecoration(
+                        hintText: l10n.searchPaletteHint,
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.white38 : Colors.black38,
+                          fontSize: 16,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: isDark ? Colors.white38 : Colors.black38,
+                          size: 20,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
+                      ),
+                      onChanged: (value) => setState(
+                        () => _searchQuery = value.toLowerCase().trim(),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // List
+                Expanded(
+                  child: palettesAsync.when(
+                    loading: () => const SkeletonListView(itemHeight: 70),
+                    error: (e, s) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            size: 48,
+                            color: FluxTheme.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            l10n.loadFailed,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 16),
+                          BouncyButton(
+                            onTap: () => ref.invalidate(palettesProvider),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: FluxTheme.primary,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                l10n.retry,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  data: (palettes) {
-                    final isZh = l10n is ZhStrings;
-                    final filteredPalettes = palettes.asMap().entries.where((
-                      e,
-                    ) {
-                      if (_showFavorites && !favs.contains(e.key)) return false;
-                      if (_searchQuery.isEmpty) return true;
-                      final eng = e.value.toLowerCase();
-                      final zh = getPaletteChineseName(e.value).toLowerCase();
-                      return eng.contains(_searchQuery) ||
-                          zh.contains(_searchQuery);
-                    }).toList();
+                    data: (palettes) {
+                      final isZh = l10n is ZhStrings;
+                      final filteredPalettes = palettes.asMap().entries.where((
+                        e,
+                      ) {
+                        if (_showFavorites && !favs.contains(e.key)) {
+                          return false;
+                        }
+                        if (_searchQuery.isEmpty) return true;
+                        final eng = e.value.toLowerCase();
+                        final zh = getPaletteChineseName(e.value).toLowerCase();
+                        return eng.contains(_searchQuery) ||
+                            zh.contains(_searchQuery);
+                      }).toList();
 
-                    if (filteredPalettes.isEmpty) {
-                      return EmptyState(
-                        icon: _showFavorites
-                            ? Icons.star_border_rounded
-                            : Icons.search_off_rounded,
-                        title: _showFavorites
-                            ? l10n.noFavorites
-                            : l10n.noResults,
-                        message: _showFavorites
-                            ? l10n.noFavoritesMsg
-                            : l10n.noResultsMsg,
-                      );
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                      itemCount: filteredPalettes.length,
-                      itemBuilder: (context, index) {
-                        final entry = filteredPalettes[index];
-                        final palIdx = entry.key;
-                        final name = entry.value;
-                        final isSelected = currentPal == palIdx;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _PaletteTile(
-                            englishName: name,
-                            chineseName: isZh
-                                ? getPaletteChineseName(name)
-                                : null,
-                            index: palIdx,
-                            isFavorite: favs.contains(palIdx),
-                            onFavoriteToggle: () =>
-                                favsService.togglePaletteFavorite(palIdx),
-                            isSelected: isSelected,
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              final sid = widget.segmentId;
-                              ref
-                                  .read(currentDeviceSessionNotifierProvider)
-                                  .optimisticUpdate(
-                                    (s) => s.copyWith(
-                                      ps: -1, // Clear preset selection when a palette is chosen
-                                      seg: s.seg
-                                          .map(
-                                            (seg) => seg.id == sid
-                                                ? seg.copyWith(pal: palIdx)
-                                                : seg,
-                                          )
-                                          .toList(),
-                                    ),
-                                    () =>
-                                        api!.setSegmentState(sid, pal: palIdx),
-                                  );
-                              Navigator.pop(context);
-                            },
-                          ).animate().fadeIn(delay: (index * 15).ms).slideX(begin: 0.05),
+                      if (filteredPalettes.isEmpty) {
+                        return EmptyState(
+                          icon: _showFavorites
+                              ? Icons.star_border_rounded
+                              : Icons.search_off_rounded,
+                          title: _showFavorites
+                              ? l10n.noFavorites
+                              : l10n.noResults,
+                          message: _showFavorites
+                              ? l10n.noFavoritesMsg
+                              : l10n.noResultsMsg,
                         );
-                      },
-                    );
-                  },
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                        itemCount: filteredPalettes.length,
+                        itemBuilder: (context, index) {
+                          final entry = filteredPalettes[index];
+                          final palIdx = entry.key;
+                          final name = entry.value;
+                          final isSelected = currentPal == palIdx;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _PaletteTile(
+                              englishName: name,
+                              chineseName: isZh
+                                  ? getPaletteChineseName(name)
+                                  : null,
+                              index: palIdx,
+                              isFavorite: favs.contains(palIdx),
+                              onFavoriteToggle: () =>
+                                  favsService.togglePaletteFavorite(palIdx),
+                              isSelected: isSelected,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                final sid = widget.segmentId;
+                                ref
+                                    .read(currentDeviceSessionNotifierProvider)
+                                    .optimisticUpdate(
+                                      (s) => s.copyWith(
+                                        ps: -1, // Clear preset selection when a palette is chosen
+                                        seg: s.seg
+                                            .map(
+                                              (seg) => seg.id == sid
+                                                  ? seg.copyWith(pal: palIdx)
+                                                  : seg,
+                                            )
+                                            .toList(),
+                                      ),
+                                      () => api!.setSegmentState(
+                                        sid,
+                                        pal: palIdx,
+                                      ),
+                                    );
+                                Navigator.pop(context);
+                              },
+                            ).animate().fadeIn(delay: (index * 15).ms).slideX(begin: 0.05),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton:
-          BouncyButton(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CustomPaletteEditorScreen(),
-                    ),
-                  );
-                },
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.white.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.8),
-                          width: 0.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: useSystemToolbar
+            ? null
+            : BouncyButton(
+                    onTap: _openCustomPaletteEditor,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.add_rounded,
-                            color: FluxTheme.primary,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            l10n.customPalette,
-                            style: const TextStyle(
-                              color: FluxTheme.primary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.white.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : Colors.white.withValues(alpha: 0.8),
+                              width: 0.5,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.add_rounded,
+                                color: FluxTheme.primary,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                l10n.customPalette,
+                                style: const TextStyle(
+                                  color: FluxTheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              )
-              .animate()
-              .fadeIn(delay: 500.ms)
-              .slideY(begin: 0.5, curve: Curves.easeOutBack),
+                  )
+                  .animate()
+                  .fadeIn(delay: 500.ms)
+                  .slideY(begin: 0.5, curve: Curves.easeOutBack),
+      ),
+    );
+  }
+
+  void _openCustomPaletteEditor() {
+    HapticFeedback.selectionClick();
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const CustomPaletteEditorScreen(),
+      ),
     );
   }
 }
